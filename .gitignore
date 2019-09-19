@@ -1,5 +1,7 @@
 */
 *.pdf
 *.jpg
+*.txt
+*.PNG
 
 ! MP1/

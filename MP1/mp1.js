@@ -1,6 +1,6 @@
 /**
- * @file A simple WebGL example drawing a circle
- * @author Eric Shaffer <shaffer1@illinois.edu>  
+ * @file A simple WebGL example drawing Illinois logo
+ * @author Steven Yuan <yhyuan2@illinois.edu>
  */
 
 /** @global The WebGL context */
@@ -12,7 +12,7 @@ var canvas;
 /** @global A simple GLSL shader program */
 var shaderProgram;
 
-/** @global The WebGL buffer holding the triangle */
+/** @global The WebGL buffer holding the triangle vertices */
 var vertexPositionBuffer;
 
 /** @global The WebGL buffer holding the vertex colors */
@@ -27,13 +27,18 @@ var pMatrix = mat4.create();
 /** @global The angle of rotation around the x axis */
 var defAngle = 0;
 
-/** @global Number of vertices around the circle boundary */
-var numCircleVerts = 100;
+/** @global Number of vertices in the logo */
+var numVertices = 120;
 
 /** @global Two times pi to save some multiplications...*/
 var twicePi = 2.0 * 3.14159;
-    
+
+
+
 //----------------------------------------------------------------------------------
+
+
+
 /**
  * Sends projection/modelview matrices to shader
  */
@@ -41,6 +46,8 @@ function setMatrixUniforms() {
     gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
     gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
 }
+
+
 
 /**
  * Translates degrees to radians
@@ -50,6 +57,7 @@ function setMatrixUniforms() {
 function degToRad(degrees) {
     return degrees * Math.PI / 180;
 }
+
 
 
 /**
@@ -76,6 +84,8 @@ function createGLContext(canvas) {
   }
   return context;
 }
+
+
 
 /**
  * Loads Shaders
@@ -120,6 +130,8 @@ function loadShaderFromDOM(id) {
   return shader;
 }
 
+
+
 /**
  * Setup the fragment and vertex shaders
  */
@@ -146,18 +158,71 @@ function setupShaders() {
   shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
 }
 
+
+
 /**
  * Populate vertex buffer with data
   @param {Number} numVertices number of vertices to use around the circle boundary
  */
 function loadVertices(numVertices) {
   console.log("Frame", defAngle);
-  //Generate the vertex positions    
+  //Generate the vertex positions
   vertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+  let triangleVertices = [
+      -22,  33, 0.0,  -22,  24, 0.0,  -12,  24, 0.0,
+      -22,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
+        0,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
+        0,  33, 0.0,    0,  24, 0.0,  -12,  24, 0.0,
+        0,  33, 0.0,    0,  24, 0.0,   12,  24, 0.0,
+        0,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
+       22,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
+       22,  33, 0.0,   22,  24, 0.0,   12,  24, 0.0,
+      -22,  24, 0.0,  -22,  15, 0.0,  -12,  24, 0.0,
+      -12,  15, 0.0,  -22,  15, 0.0,  -12,  24, 0.0,
+      -12,  15, 0.0,    0,  15, 0.0,  -12,  24, 0.0,
+        0,  15, 0.0,  -12,  24, 0.0,    0,  24, 0.0,
+        0,  15, 0.0,   12,  24, 0.0,    0,  24, 0.0,
+       12,  15, 0.0,    0,  15, 0.0,   12,  24, 0.0,
+       12,  15, 0.0,   22,  15, 0.0,   12,  24, 0.0,
+       22,  24, 0.0,   22,  15, 0.0,   12,  24, 0.0,
+      -12,  15, 0.0,  -12,   0, 0.0,    0,   0, 0.0,
+      -12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
+       12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
+       12,  15, 0.0,   12,   0, 0.0,    0,   0, 0.0,
+      -12,   0, 0.0,  -12, -15, 0.0,    0,   0, 0.0,
+      -12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
+       12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
+       12,   0, 0.0,   12, -15, 0.0,    0,   0, 0.0,
+      -22, -15, 0.0,  -22, -24, 0.0,  -12, -24, 0.0,
+      -22, -15, 0.0,  -12, -15, 0.0,  -12, -24, 0.0,
+      -12, -15, 0.0,  -12, -24, 0.0,    0, -15, 0.0,
+        0, -15, 0.0,    0, -24, 0.0,  -12, -24, 0.0,
+        0, -15, 0.0,    0, -24, 0.0,   12, -24, 0.0,
+       12, -15, 0.0,   12, -24, 0.0,    0, -15, 0.0,
+       22, -15, 0.0,   12, -15, 0.0,   12, -24, 0.0,
+       22, -15, 0.0,   22, -24, 0.0,   12, -24, 0.0,
+      -22, -24, 0.0,  -22, -33, 0.0,  -12, -24, 0.0,
+      -12, -33, 0.0,  -22, -33, 0.0,  -12, -24, 0.0,
+      -12, -33, 0.0,    0, -33, 0.0,  -12, -24, 0.0,
+        0, -33, 0.0,  -12, -24, 0.0,    0, -24, 0.0,
+        0, -33, 0.0,   12, -24, 0.0,    0, -24, 0.0,
+       12, -33, 0.0,    0, -33, 0.0,   12, -24, 0.0,
+       12, -33, 0.0,   22, -33, 0.0,   12, -24, 0.0,
+       22, -24, 0.0,   22, -33, 0.0,   12, -24, 0.0
+  ];
+
+  // Fit coordinate into [-1, 1]
+  for (let i = 0; i < triangleVertices.length; i++) {
+      triangleVertices[i] /= 100.0;
+  }
+
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.DYNAMIC_DRAW);
+  vertexPositionBuffer.itemSize = 3;
+  vertexPositionBuffer.numberOfItems = numVertices;
     
   // Start with vertex at the origin    
-  let triangleVertices = [0.0, 0.0, 0.0];
+  /*let triangleVertices = [0.0, 0.0, 0.0];
 
   //Generate a triangle fan around origin
   let radius = 0.5;
@@ -167,16 +232,17 @@ function loadVertices(numVertices) {
       let angle = i *  twicePi / numVertices;
       let x = (radius * Math.cos(angle));
       let y = (radius * Math.sin(angle));
-      let deformPoint = deformSin(x, y, angle);
-      triangleVertices.push(x + deformPoint[0]);
-      triangleVertices.push(y + deformPoint[1]);
+      triangleVertices.push(x);
+      triangleVertices.push(y);
       triangleVertices.push(z);
   }
     
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.DYNAMIC_DRAW);
   vertexPositionBuffer.itemSize = 3;
-  vertexPositionBuffer.numberOfItems = numVertices + 2;
+  vertexPositionBuffer.numberOfItems = numVertices + 2;*/
 }
+
+
 
 /**
  * Populate color buffer with data
@@ -187,9 +253,16 @@ function loadColors(numVertices) {
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
     
   // Set the heart of the circle to be black    
-  let colors = [0.0, 0.0, 0.0, 1.0];
+  //let colors = [230.0 / 255.0, 46.0 / 255.0, 0.0, 1.0];
+    let colors = [];
+  for (let i = 0; i < numVertices; i++) {
+      colors.push(230.0 / 255.0);
+      colors.push(46.0 / 255.0);
+      colors.push(0.0);
+      colors.push(1.0);
+  }
   
-  let a = 1.0;
+  /*let a = 1.0;
   let g = 0.0;
   let halfV = numVertices / 2.0;
   for (let i = 0; i <= numVertices; i++) {
@@ -199,12 +272,15 @@ function loadColors(numVertices) {
       colors.push(g);
       colors.push(b);
       colors.push(a);
-  }
+  }*/
     
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
   vertexColorBuffer.itemSize = 4;
-  vertexColorBuffer.numItems = numVertices + 2;
+  vertexColorBuffer.numItems = numVertices;
 }
+
+
+
 /**
  * Populate buffers with data
    @param {Number} numVertices number of vertices to use around the circle boundary
@@ -218,6 +294,8 @@ function setupBuffers(numVertices) {
   loadColors(numVertices);
 }
 
+
+
 /**
  * Draw call that applies matrix transformations to model and draws model in frame
  */
@@ -227,9 +305,6 @@ function draw() {
 
   mat4.identity(mvMatrix);
   mat4.identity(pMatrix);
-    
-  //mat4.ortho(pMatrix,-1,1,-1,1,1,-1);  
-  
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
   gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
@@ -239,8 +314,10 @@ function draw() {
                             vertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
   
   setMatrixUniforms();
-  gl.drawArrays(gl.TRIANGLE_FAN, 0, vertexPositionBuffer.numberOfItems);
+  gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numberOfItems);
 }
+
+
 
 /**
  * Animation to be called from tick. Updates globals and performs animation for each tick.
@@ -250,6 +327,8 @@ function animate() {
     loadVertices(numCircleVerts);
 }
 
+
+
 /**
  * Startup function called from html code to start program.
  */
@@ -257,11 +336,13 @@ function animate() {
   canvas = document.getElementById("myGLCanvas");
   gl = createGLContext(canvas);
   setupShaders(); 
-  setupBuffers(numCircleVerts);
+  setupBuffers(numVertices);
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
   gl.enable(gl.DEPTH_TEST);
   tick();
 }
+
+
 
 /**
  * Tick called for every animation frame.
@@ -269,18 +350,5 @@ function animate() {
 function tick() {
     requestAnimFrame(tick);
     draw();
-    animate();
-}
-
-
-
-/**
- * C
- */
-function deformSin(x, y, angle) {
-    var circPt = vec2.fromValues(x, y);
-    var dist = 0.2 * Math.sin((angle)+degToRad(defAngle));
-    vec2.normalize(circPt, circPt);
-    vec2.scale(circPt, circPt, dist);
-    return circPt;
+    //animate();
 }
