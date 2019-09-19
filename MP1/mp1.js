@@ -24,14 +24,24 @@ var mvMatrix = mat4.create();
 /** @global The Projection matrix */
 var pMatrix = mat4.create();
 
-/** @global The angle of rotation around the x axis */
+/** @global The angle of rotation */
 var defAngle = 0;
+
+/** @global True for increasing scaleSize => Make logo smaller
+            False for decreasing scaleSize => Make logo bigger */
+var incOrDec = true;
+
+/** @global The value of scaling*/
+var scaleSize = 1;
 
 /** @global Number of vertices in the logo */
 var numVertices = 120;
 
 /** @global Two times pi to save some multiplications...*/
 var twicePi = 2.0 * 3.14159;
+
+/** @global Halve pi to save some multiplications...*/
+var halfPi = 3.14159 / 2;
 
 
 
@@ -166,9 +176,11 @@ function setupShaders() {
  */
 function loadVertices(numVertices) {
   console.log("Frame", defAngle);
-  //Generate the vertex positions
+
   vertexPositionBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+
+  //Generate the vertex positions
   let triangleVertices = [
       -22,  33, 0.0,  -22,  24, 0.0,  -12,  24, 0.0,
       -22,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
@@ -214,7 +226,7 @@ function loadVertices(numVertices) {
 
   // Fit coordinates into [-1.0, 1.0]
   for (let i = 0; i < triangleVertices.length; i++) {
-      triangleVertices[i] /= 50.0;
+      triangleVertices[i] /= 33.0;
   }
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.DYNAMIC_DRAW);
@@ -232,7 +244,7 @@ function loadColors(numVertices) {
   vertexColorBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
     
-  // Set the heart of the circle to be black    
+  // Generate colors
   let colors = [
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
@@ -311,6 +323,8 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); 
 
   mat4.identity(mvMatrix);
+  // Perform transformations
+  transformation();
   mat4.identity(pMatrix);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
@@ -327,10 +341,31 @@ function draw() {
 
 
 /**
+ * Add transformations to mvMatrix
+ */
+function transformation() {
+    // Translate on Lissajous Curve
+    mat4.fromTranslation(mvMatrix, [Math.sin(3*degToRad(defAngle) + halfPi), Math.sin(2*degToRad(defAngle)), 0]);
+    // Rotate around z axis
+    mat4.rotateZ(mvMatrix, mvMatrix, degToRad(defAngle));
+    // Change logo size
+    mat4.scale(mvMatrix, mvMatrix, [1.0 / scaleSize, 1.0 / scaleSize, 1.0]);
+}
+
+
+
+/**
  * Animation to be called from tick. Updates globals and performs animation for each tick.
  */
 function animate() { 
-    defAngle = (defAngle + 1.0) % 360;
+    defAngle = (defAngle + 0.5) % 360;
+
+    // Make logo change size from small to big and from big to small
+    if(scaleSize == 0) incOrDec = true;
+    else if(scaleSize == 10) incOrDec = false;
+    if(incOrDec) scaleSize += 0.125;
+    else scaleSize -= 0.125;
+
     loadVertices(numVertices);
 }
 
@@ -357,5 +392,5 @@ function animate() {
 function tick() {
     requestAnimFrame(tick);
     draw();
-    //animate();
+    animate();
 }
