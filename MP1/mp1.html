@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/html" xmlns="http://www.w3.org/1999/html">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>MP1</title>
@@ -38,6 +38,10 @@
 
 
 <body onload="startup();">
+  <form>
+    <input type="radio" name="animation" id="canvas1" checked onclick="myClick()">Animation</br>
+    <input type="radio" name="animation" id="canvas2" onclick="myClick()">My own animation</br>
+  </form>
   <canvas id="myGLCanvas" width="500" height="500"></canvas>
 </body>
 
