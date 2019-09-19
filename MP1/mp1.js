@@ -162,7 +162,7 @@ function setupShaders() {
 
 /**
  * Populate vertex buffer with data
-  @param {Number} numVertices number of vertices to use around the circle boundary
+  @param {Number} numVertices number of vertices to use in the logo
  */
 function loadVertices(numVertices) {
   console.log("Frame", defAngle);
@@ -212,67 +212,74 @@ function loadVertices(numVertices) {
        22, -24, 0.0,   22, -33, 0.0,   12, -24, 0.0
   ];
 
-  // Fit coordinate into [-1, 1]
+  // Fit coordinates into [-1.0, 1.0]
   for (let i = 0; i < triangleVertices.length; i++) {
-      triangleVertices[i] /= 100.0;
+      triangleVertices[i] /= 50.0;
   }
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.DYNAMIC_DRAW);
   vertexPositionBuffer.itemSize = 3;
   vertexPositionBuffer.numberOfItems = numVertices;
-    
-  // Start with vertex at the origin    
-  /*let triangleVertices = [0.0, 0.0, 0.0];
-
-  //Generate a triangle fan around origin
-  let radius = 0.5;
-  let z = 0.0;
-    
-  for (let i = 0; i <= numVertices; i++) {
-      let angle = i *  twicePi / numVertices;
-      let x = (radius * Math.cos(angle));
-      let y = (radius * Math.sin(angle));
-      triangleVertices.push(x);
-      triangleVertices.push(y);
-      triangleVertices.push(z);
-  }
-    
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.DYNAMIC_DRAW);
-  vertexPositionBuffer.itemSize = 3;
-  vertexPositionBuffer.numberOfItems = numVertices + 2;*/
 }
 
 
 
 /**
  * Populate color buffer with data
-  @param {Number} numVertices number of vertices to use around the circle boundary
+  @param {Number} numVertices number of vertices to use in the logo
  */
 function loadColors(numVertices) {
   vertexColorBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
     
   // Set the heart of the circle to be black    
-  //let colors = [230.0 / 255.0, 46.0 / 255.0, 0.0, 1.0];
-    let colors = [];
-  for (let i = 0; i < numVertices; i++) {
-      colors.push(230.0 / 255.0);
-      colors.push(46.0 / 255.0);
-      colors.push(0.0);
-      colors.push(1.0);
+  let colors = [
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+      203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+      203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+      203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+      203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
+  ];
+
+  // Fit colors into [0.0, 255.0]
+  for (let i = 0; i < colors.length; i++) {
+      colors[i] /= 255.0;
   }
-  
-  /*let a = 1.0;
-  let g = 0.0;
-  let halfV = numVertices / 2.0;
-  for (let i = 0; i <= numVertices; i++) {
-      let r = Math.abs((i - halfV) / halfV);
-      let b = 1.0 - r;
-      colors.push(r);
-      colors.push(g);
-      colors.push(b);
-      colors.push(a);
-  }*/
     
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
   vertexColorBuffer.itemSize = 4;
@@ -283,7 +290,7 @@ function loadColors(numVertices) {
 
 /**
  * Populate buffers with data
-   @param {Number} numVertices number of vertices to use around the circle boundary
+   @param {Number} numVertices number of vertices to use in the logo
  */
 function setupBuffers(numVertices) {
     
@@ -324,7 +331,7 @@ function draw() {
  */
 function animate() { 
     defAngle = (defAngle + 1.0) % 360;
-    loadVertices(numCircleVerts);
+    loadVertices(numVertices);
 }
 
 

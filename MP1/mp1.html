@@ -22,10 +22,11 @@
     varying vec4 vColor;
     void main(void) {
         vec4 c = vColor;
-        // divided by 7
-        gl_FragColor = vec4(c.r > 32.86/255.0 ? 230.0/255.0 : 0.0,
-                            c.g > 6.57/255.0  ? 46.0/255.0  : 0.0,
-                            c.b > 87.43/255.0 ? 102.0/255.0 : 0.0,
+        // Thresholds are divided by 4 from original values
+        // Prevent interpolation
+        gl_FragColor = vec4(c.r > 57.5/255.0 ? 230.0/255.0 : 0.0,
+                            c.g > 11.5/255.0 ? 46.0/255.0  : 0.0,
+                            c.b > 76.5/255.0 ? 102.0/255.0 : 0.0,
                             1.0);
     }
   </script>
