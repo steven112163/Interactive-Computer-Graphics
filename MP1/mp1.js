@@ -12,11 +12,23 @@ var canvas;
 /** @global A simple GLSL shader program */
 var shaderProgram;
 
-/** @global The WebGL buffer holding the triangle vertices */
-var vertexPositionBuffer;
+/** @global Array holding the triangle vertices of logo I*/
+var triangleVerticesOfI;
 
-/** @global The WebGL buffer holding the vertex colors */
-var vertexColorBuffer;
+/** @global Array holding the triangle vertices of logo L*/
+var triangleVerticesOfL;
+
+/** @global The WebGL buffer holding the triangle vertices of logo I */
+var vertexPositionBufferOfI;
+
+/** @global The WebGL buffer holding the vertex colors of logo I */
+var vertexColorBufferOfI;
+
+/** @global The WebGL buffer holding the triangle vertices of logo L */
+var vertexPositionBufferOfL;
+
+/** @global The WebGL buffer holding the vertex colors of logo L */
+var vertexColorBufferOfL;
 
 /** @global The Modelview matrix */
 var mvMatrix = mat4.create();
@@ -24,21 +36,34 @@ var mvMatrix = mat4.create();
 /** @global The Projection matrix */
 var pMatrix = mat4.create();
 
-/** @global The angle of rotation */
+/** @global The angle of rotation for first animation*/
 var defAngle = 0;
 
 /** @global True for increasing scaleSize => Make logo smaller
-            False for decreasing scaleSize => Make logo bigger */
+            False for decreasing scaleSize => Make logo bigger
+            For first animation                                 */
 var incOrDec = true;
 
-/** @global The value of scaling*/
+/** @global The value of scaling for first animation*/
 var scaleSize = 1;
 
-/** @global Number of vertices in two animations individually */
-var numVertices = [120, 120];
+/** @global Number of vertices in two animations' object individually */
+var numVertices = [120, 120, 96];
 
 /** @global Index of animations */
 var animation = 0;
+
+/** @global Stage of non-uniform transformation for first animation */
+var nonUniStage = 0;
+
+/** @global Multiple of scattering distance for second animation in reverse order (1/disScatter) */
+var mulScatter = 50;
+
+/** @global Counter for staying in complete log */
+var count = 0;
+
+/** @global Flag for resetting vertices of second animation */
+var fReset = true;
 
 
 
@@ -177,7 +202,7 @@ function loadVertices(numVertices) {
     if (!animation)
         loadFirAniVertices(numVertices[0]);
     else
-        loadSecAniVertices(numVertices[1]);
+        loadSecAniVertices(numVertices[1], numVertices[2]);
 }
 
 
@@ -187,71 +212,224 @@ function loadVertices(numVertices) {
  * @param {Number} numVertices number of vertices to use in animation 1
  */
 function loadFirAniVertices(numVertices) {
-    vertexPositionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+    vertexPositionBufferOfI = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfI);
 
-    //Generate the vertex positions
-    let triangleVertices = [
+    // Generate the vertex positions
+    resetFirVertices();
+
+    // Non-uniform transformation
+    nonUniTransform();
+
+    // Fit coordinates into [-1.0, 1.0]
+    for (let i = 0; i < triangleVerticesOfI.length; i++) {
+        triangleVerticesOfI[i] /= 33.0;
+    }
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVerticesOfI), gl.DYNAMIC_DRAW);
+    vertexPositionBufferOfI.itemSize = 3;
+    vertexPositionBufferOfI.numberOfItems = numVertices;
+}
+
+
+
+/**
+ * Reset triangleVertices to original logo for first animation
+ */
+function resetFirVertices() {
+    triangleVerticesOfI = [
         -22,  33, 0.0,  -22,  24, 0.0,  -12,  24, 0.0,
         -22,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
-        0,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
-        0,  33, 0.0,    0,  24, 0.0,  -12,  24, 0.0,
-        0,  33, 0.0,    0,  24, 0.0,   12,  24, 0.0,
-        0,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
-        22,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
-        22,  33, 0.0,   22,  24, 0.0,   12,  24, 0.0,
+          0,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
+          0,  33, 0.0,    0,  24, 0.0,  -12,  24, 0.0,
+          0,  33, 0.0,    0,  24, 0.0,   12,  24, 0.0,
+          0,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
+         22,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
+         22,  33, 0.0,   22,  24, 0.0,   12,  24, 0.0,
         -22,  24, 0.0,  -22,  15, 0.0,  -12,  24, 0.0,
         -12,  15, 0.0,  -22,  15, 0.0,  -12,  24, 0.0,
         -12,  15, 0.0,    0,  15, 0.0,  -12,  24, 0.0,
-        0,  15, 0.0,  -12,  24, 0.0,    0,  24, 0.0,
-        0,  15, 0.0,   12,  24, 0.0,    0,  24, 0.0,
-        12,  15, 0.0,    0,  15, 0.0,   12,  24, 0.0,
-        12,  15, 0.0,   22,  15, 0.0,   12,  24, 0.0,
-        22,  24, 0.0,   22,  15, 0.0,   12,  24, 0.0,
+          0,  15, 0.0,  -12,  24, 0.0,    0,  24, 0.0,
+          0,  15, 0.0,   12,  24, 0.0,    0,  24, 0.0,
+         12,  15, 0.0,    0,  15, 0.0,   12,  24, 0.0,
+         12,  15, 0.0,   22,  15, 0.0,   12,  24, 0.0,
+         22,  24, 0.0,   22,  15, 0.0,   12,  24, 0.0,
         -12,  15, 0.0,  -12,   0, 0.0,    0,   0, 0.0,
         -12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
-        12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
-        12,  15, 0.0,   12,   0, 0.0,    0,   0, 0.0,
+         12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
+         12,  15, 0.0,   12,   0, 0.0,    0,   0, 0.0,
         -12,   0, 0.0,  -12, -15, 0.0,    0,   0, 0.0,
         -12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
-        12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
-        12,   0, 0.0,   12, -15, 0.0,    0,   0, 0.0,
+         12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
+         12,   0, 0.0,   12, -15, 0.0,    0,   0, 0.0,
         -22, -15, 0.0,  -22, -24, 0.0,  -12, -24, 0.0,
         -22, -15, 0.0,  -12, -15, 0.0,  -12, -24, 0.0,
         -12, -15, 0.0,  -12, -24, 0.0,    0, -15, 0.0,
-        0, -15, 0.0,    0, -24, 0.0,  -12, -24, 0.0,
-        0, -15, 0.0,    0, -24, 0.0,   12, -24, 0.0,
-        12, -15, 0.0,   12, -24, 0.0,    0, -15, 0.0,
-        22, -15, 0.0,   12, -15, 0.0,   12, -24, 0.0,
-        22, -15, 0.0,   22, -24, 0.0,   12, -24, 0.0,
+          0, -15, 0.0,    0, -24, 0.0,  -12, -24, 0.0,
+          0, -15, 0.0,    0, -24, 0.0,   12, -24, 0.0,
+         12, -15, 0.0,   12, -24, 0.0,    0, -15, 0.0,
+         22, -15, 0.0,   12, -15, 0.0,   12, -24, 0.0,
+         22, -15, 0.0,   22, -24, 0.0,   12, -24, 0.0,
         -22, -24, 0.0,  -22, -33, 0.0,  -12, -24, 0.0,
         -12, -33, 0.0,  -22, -33, 0.0,  -12, -24, 0.0,
         -12, -33, 0.0,    0, -33, 0.0,  -12, -24, 0.0,
-        0, -33, 0.0,  -12, -24, 0.0,    0, -24, 0.0,
-        0, -33, 0.0,   12, -24, 0.0,    0, -24, 0.0,
-        12, -33, 0.0,    0, -33, 0.0,   12, -24, 0.0,
-        12, -33, 0.0,   22, -33, 0.0,   12, -24, 0.0,
-        22, -24, 0.0,   22, -33, 0.0,   12, -24, 0.0
+          0, -33, 0.0,  -12, -24, 0.0,    0, -24, 0.0,
+          0, -33, 0.0,   12, -24, 0.0,    0, -24, 0.0,
+         12, -33, 0.0,    0, -33, 0.0,   12, -24, 0.0,
+         12, -33, 0.0,   22, -33, 0.0,   12, -24, 0.0,
+         22, -24, 0.0,   22, -33, 0.0,   12, -24, 0.0
     ];
+}
 
-    // Fit coordinates into [-1.0, 1.0]
-    for (let i = 0; i < triangleVertices.length; i++) {
-        triangleVertices[i] /= 33.0;
+
+
+/**
+ * Non-uniform transformation directly changes buffer
+ */
+function nonUniTransform() {
+    for (let i = 0; i < triangleVerticesOfI.length; i++) {
+        switch (nonUniStage) {
+            case 1: if (triangleVerticesOfI[i] == 24) {
+                if (triangleVerticesOfI[i-1] == -22) triangleVerticesOfI[i-1] = -17;
+                else if (triangleVerticesOfI[i-1] == 22) triangleVerticesOfI[i-1] = 17;
+            } break;
+            case 2: if (triangleVerticesOfI[i] == 15) {
+                if (triangleVerticesOfI[i-1] == -22) triangleVerticesOfI[i-1] = -17;
+                else if (triangleVerticesOfI[i-1] == 22) triangleVerticesOfI[i-1] = 17;
+            } break;
+            case 3: if (triangleVerticesOfI[i] == 0) {
+                if (triangleVerticesOfI[i-1] == -12) triangleVerticesOfI[i-1] = -6;
+                else if (triangleVerticesOfI[i-1] == 12) triangleVerticesOfI[i-1] = 6;
+            } break;
+            case 4: if (triangleVerticesOfI[i] == -15) {
+                if (triangleVerticesOfI[i-1] == -22) triangleVerticesOfI[i-1] = -17;
+                else if (triangleVerticesOfI[i-1] == 22) triangleVerticesOfI[i-1] = 17;
+            } break;
+            case 5: if (triangleVerticesOfI[i] == -24) {
+                if (triangleVerticesOfI[i-1] == -22) triangleVerticesOfI[i-1] = -17;
+                else if (triangleVerticesOfI[i-1] == 22) triangleVerticesOfI[i-1] = 17;
+            } break;
+            case 6: if (triangleVerticesOfI[i] == -33) {
+                if (triangleVerticesOfI[i-1] == -22) triangleVerticesOfI[i-1] = -17;
+                else if (triangleVerticesOfI[i-1] == 22) triangleVerticesOfI[i-1] = 17;
+            } break;
+            case 0:
+            default:if (triangleVerticesOfI[i] == 33) {
+                if (triangleVerticesOfI[i-1] == -22) triangleVerticesOfI[i-1] = -17;
+                else if (triangleVerticesOfI[i-1] == 22)  triangleVerticesOfI[i-1] = 17;
+            } break;
+        }
     }
-
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVertices), gl.DYNAMIC_DRAW);
-    vertexPositionBuffer.itemSize = 3;
-    vertexPositionBuffer.numberOfItems = numVertices;
 }
 
 
 
 /**
  * Populate vertex buffer with data of animation 2
- * @param {Number} numVertices number of vertices to use in animation 2
+ * @param {Number} numVerticesOfI number of vertices to use for logo I
+ * @param {Number} numVerticesOfL number of vertices to use for logo L
  */
-function loadSecAniVertices(numVertices) {
-    //TODO
+function loadSecAniVertices(numVerticesOfI, numVerticesOfL) {
+    // Generate the vertex positions
+    if (fReset) resetSecVertices();
+
+    // Scatter triangles
+    if (!fReset) scatter();
+
+    // Fit coordinates into [-1.0, 1.0]
+    if (fReset) {
+        for (let i = 0; i < triangleVerticesOfI.length; i++) {
+            triangleVerticesOfI[i] /= 132.0;
+            if (i % 3 == 0) triangleVerticesOfI[i] -= 0.5;
+        }
+        for (let i = 0; i < triangleVerticesOfL.length; i++) {
+            triangleVerticesOfL[i] /= 132.0;
+            if (i % 3 == 0) triangleVerticesOfL[i] += 0.5;
+        }
+    }
+
+    vertexPositionBufferOfI = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfI);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVerticesOfI), gl.DYNAMIC_DRAW);
+    vertexPositionBufferOfI.itemSize = 3;
+    vertexPositionBufferOfI.numberOfItems = numVerticesOfI;
+
+    vertexPositionBufferOfL = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfL);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVerticesOfL), gl.DYNAMIC_DRAW);
+    vertexPositionBufferOfL.itemSize = 3;
+    vertexPositionBufferOfL.numberOfItems = numVerticesOfL;
+}
+
+
+
+/**
+ * Reset triangleVertices to original logo for second animation
+ */
+function resetSecVertices() {
+    resetFirVertices();
+
+    triangleVerticesOfL = [
+        -22,  33, 1.0,  -22,  24, 1.0,  -12,  24, 1.0,
+        -22,  33, 1.0,  -12,  33, 1.0,  -12,  24, 1.0,
+          0,  33, 1.0,  -12,  33, 1.0,  -12,  24, 1.0,
+          0,  33, 1.0,    0,  24, 1.0,  -12,  24, 1.0,
+        -22,  24, 1.0,  -22,  15, 1.0,  -12,  24, 1.0,
+        -12,  15, 1.0,  -22,  15, 1.0,  -12,  24, 1.0,
+        -12,  15, 1.0,    0,  15, 1.0,  -12,  24, 1.0,
+          0,  15, 1.0,  -12,  24, 1.0,    0,  24, 1.0,
+        -22,  15, 1.0,  -22,   0, 1.0,  -12,   0, 1.0,
+        -22,  15, 1.0,  -12,  15, 1.0,  -12,   0, 1.0,
+          0,  15, 1.0,  -12,  15, 1.0,  -12,   0, 1.0,
+          0,  15, 1.0,    0,   0, 1.0,  -12,   0, 1.0,
+        -22,   0, 1.0,  -22, -15, 1.0,  -12,   0, 1.0,
+        -22, -15, 1.0,  -12,   0, 1.0,  -12, -15, 1.0,
+          0, -15, 1.0,  -12,   0, 1.0,  -12, -15, 1.0,
+          0,   0, 1.0,    0, -15, 1.0,  -12,   0, 1.0,
+        -22, -15, 1.0,  -22, -24, 1.0,  -12, -24, 1.0,
+        -22, -15, 1.0,  -12, -15, 1.0,  -12, -24, 1.0,
+        -12, -15, 1.0,  -12, -24, 1.0,    0, -15, 1.0,
+          0, -15, 1.0,    0, -24, 1.0,  -12, -24, 1.0,
+          0, -15, 1.0,    0, -24, 1.0,   12, -24, 1.0,
+         12, -15, 1.0,   12, -24, 1.0,    0, -15, 1.0,
+         22, -15, 1.0,   12, -15, 1.0,   12, -24, 1.0,
+         22, -15, 1.0,   22, -24, 1.0,   12, -24, 1.0,
+        -22, -24, 1.0,  -22, -33, 1.0,  -12, -24, 1.0,
+        -12, -33, 1.0,  -22, -33, 1.0,  -12, -24, 1.0,
+        -12, -33, 1.0,    0, -33, 1.0,  -12, -24, 1.0,
+          0, -33, 1.0,  -12, -24, 1.0,    0, -24, 1.0,
+          0, -33, 1.0,   12, -24, 1.0,    0, -24, 1.0,
+         12, -33, 1.0,    0, -33, 1.0,   12, -24, 1.0,
+         12, -33, 1.0,   22, -33, 1.0,   12, -24, 1.0,
+         22, -24, 1.0,   22, -33, 1.0,   12, -24, 1.0
+    ];
+}
+
+
+
+/**
+ * Scatter the logo
+ */
+function scatter() {
+    let distance = 0.25;
+    for (let i = 0; i < triangleVerticesOfI.length; i += 9) {
+        let radian = degToRad(Math.random()*359);
+        triangleVerticesOfI[i] += distance / mulScatter * Math.cos(radian);
+        triangleVerticesOfI[i+1] += distance / mulScatter * Math.sin(radian);
+        triangleVerticesOfI[i+3] += distance / mulScatter * Math.cos(radian);
+        triangleVerticesOfI[i+4] += distance / mulScatter * Math.sin(radian);
+        triangleVerticesOfI[i+6] += distance / mulScatter * Math.cos(radian);
+        triangleVerticesOfI[i+7] += distance / mulScatter * Math.sin(radian);
+    }
+    for (let i = 0; i < triangleVerticesOfL.length; i += 9) {
+        let radian = degToRad(Math.random()*359);
+        triangleVerticesOfL[i] += distance / mulScatter * Math.cos(radian);
+        triangleVerticesOfL[i+1] += distance / mulScatter * Math.sin(radian);
+        triangleVerticesOfL[i+3] += distance / mulScatter * Math.cos(radian);
+        triangleVerticesOfL[i+4] += distance / mulScatter * Math.sin(radian);
+        triangleVerticesOfL[i+6] += distance / mulScatter * Math.cos(radian);
+        triangleVerticesOfL[i+7] += distance / mulScatter * Math.sin(radian);
+    }
 }
 
 
@@ -264,7 +442,7 @@ function loadColors(numVertices) {
     if (!animation)
         loadFirAniColors(numVertices[0]);
     else
-        loadSecAniColors(numVertices[1]);
+        loadSecAniColors(numVertices[1], numVertices[2]);
 }
 
 
@@ -274,51 +452,51 @@ function loadColors(numVertices) {
  * @param {Number} numVertices number of vertices to use in animation 1
  */
 function loadFirAniColors(numVertices) {
-    vertexColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+    vertexColorBufferOfI = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfI);
 
     // Generate colors
     let colors = [
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
         203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
         203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
         203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
         203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
     ];
 
     // Fit colors into [0.0, 255.0]
@@ -327,18 +505,116 @@ function loadFirAniColors(numVertices) {
     }
 
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-    vertexColorBuffer.itemSize = 4;
-    vertexColorBuffer.numItems = numVertices;
+    vertexColorBufferOfI.itemSize = 4;
+    vertexColorBufferOfI.numItems = numVertices;
 }
 
 
 
 /**
  * Populate color buffer with data of animation 2
- * @param {Number} numVertices number of vertices to use in animation 2
+ * @param {Number} numVerticesOfI number of vertices to use for logo I
+ * @param {Number} numVerticesOfL number of vertices to use for logo L
  */
-function loadSecAniColors(numVertices) {
-    //TODO
+function loadSecAniColors(numVerticesOfI, numVerticesOfL) {
+    // Generate colors
+    let colorsOfI = [
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
+    ];
+
+    let colorsOfL = [
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
+    ];
+
+    // Fit colors into [0.0, 255.0]
+    for (let i = 0; i < colorsOfI.length; i++) {
+        colorsOfI[i] /= 255.0;
+    }
+    for (let i = 0; i < colorsOfL.length; i++) {
+        colorsOfL[i] /= 255.0;
+    }
+
+    vertexColorBufferOfI = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfI);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfI), gl.STATIC_DRAW);
+    vertexColorBufferOfI.itemSize = 4;
+    vertexColorBufferOfI.numItems = numVerticesOfI;
+
+    vertexColorBufferOfL = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfL);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfL), gl.STATIC_DRAW);
+    vertexColorBufferOfL.itemSize = 4;
+    vertexColorBufferOfL.numItems = numVerticesOfL;
 }
 
 
@@ -366,29 +642,34 @@ function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     mat4.identity(mvMatrix);
+    mat4.identity(pMatrix);
     // Perform transformations
     transform();
-    mat4.identity(pMatrix);
-
-    // Non-uniform transformation
-    nonUniTransform();
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-                            vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
-                            vertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
     setMatrixUniforms();
-    gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numberOfItems);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfI);
+    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
+                            vertexPositionBufferOfI.itemSize, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfI);
+    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
+                            vertexColorBufferOfI.itemSize, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBufferOfI.numberOfItems);
+
+    if (animation) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfL);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
+            vertexPositionBufferOfL.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfL);
+        gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
+            vertexColorBufferOfL.itemSize, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBufferOfL.numberOfItems);
+    }
 }
 
 
 
 /**
  * Add transformations to matrix
- * @param {Number} aniIndex index of animation
  */
 function transform() {
     if (!animation)
@@ -418,16 +699,8 @@ function transformFirAni() {
  * Add transformations to matrix of second animation
  */
 function transformSecAni() {
-    //TODO
-    mat4.fromScaling(mvMatrix, [1.0 / 2.0, 1.0 / 2.0, 1.0]);
-}
-
-
-/**
- * Non-uniform transformation directly changes buffer
- */
-function nonUniTransform() {
-    
+    // Rotate around z axis
+    mat4.fromZRotation(mvMatrix, degToRad(defAngle));
 }
 
 
@@ -436,6 +709,19 @@ function nonUniTransform() {
  * Animation to be called from tick. Updates globals and performs animation for each tick.
  */
 function animate() {
+    if(!animation)
+        animateFir();
+    else
+        animateSec();
+}
+
+
+
+/**
+ * Animate first animation
+ */
+function animateFir() {
+    // Rotate the logo around z axis
     defAngle = (defAngle + 0.5) % 360;
 
     // Make logo change size from small to big and from big to small
@@ -443,6 +729,35 @@ function animate() {
     else if(scaleSize == 10) incOrDec = false;
     if(incOrDec) scaleSize += 0.125;
     else scaleSize -= 0.125;
+
+    // Adjust stage of non-uniform transformation to change appearance of the logo
+    if (!(parseInt(scaleSize.toString().split('.')[1]) > 0.0))
+        nonUniStage = (nonUniStage + 1) % 7;
+
+    setupBuffers(numVertices);
+}
+
+
+
+/**
+ * Animate second animation
+ */
+function animateSec() {
+    // Rotate the logo around z axis
+    defAngle = (defAngle + 0.5) % 360;
+
+    // Stay in complete logo for 100 frames
+    // After 100 frames, scatter triangles
+    count++;
+    if (count > 100) {
+        mulScatter += 0.5;
+        fReset = false;
+    }
+    if (mulScatter > 100) {
+        fReset = true;
+        count = 0;
+        mulScatter = 1;
+    }
 
     setupBuffers(numVertices);
 }
@@ -456,10 +771,10 @@ function animate() {
      canvas = document.getElementById("myGLCanvas");
      gl = createGLContext(canvas);
      setupShaders();
-     setupBuffers(numVertices, animation);
+     setupBuffers(numVertices);
      gl.clearColor(1.0, 1.0, 1.0, 1.0);
      gl.enable(gl.DEPTH_TEST);
-     tick(animation);
+     tick();
 }
 
 
