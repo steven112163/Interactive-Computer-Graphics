@@ -18,6 +18,12 @@ var triangleVerticesOfI;
 /** @global Array holding the triangle vertices of logo L*/
 var triangleVerticesOfL;
 
+/** @global Array holding the colors of logo I*/
+var colorsOfI;
+
+/** @global Array holding the colors of logo L*/
+var colorsOfL;
+
 /** @global The WebGL buffer holding the triangle vertices of logo I */
 var vertexPositionBufferOfI;
 
@@ -56,14 +62,13 @@ var animation = 0;
 /** @global Stage of non-uniform transformation for first animation */
 var nonUniStage = 0;
 
-/** @global Multiple of scattering distance for second animation in reverse order (1/disScatter) */
-var mulScatter = 50;
-
-/** @global Counter for staying in complete log */
-var count = 0;
+/** @global Speed of scattering for second animation */
+var scatterSpeed = 1;
 
 /** @global Flag for resetting vertices of second animation */
 var fReset = true;
+
+var count = 0;
 
 
 
@@ -340,11 +345,11 @@ function loadSecAniVertices(numVerticesOfI, numVerticesOfL) {
     if (fReset) {
         for (let i = 0; i < triangleVerticesOfI.length; i++) {
             triangleVerticesOfI[i] /= 132.0;
-            if (i % 3 == 0) triangleVerticesOfI[i] -= 0.5;
+            if (i % 3 == 0) triangleVerticesOfI[i] -= 0.25;
         }
         for (let i = 0; i < triangleVerticesOfL.length; i++) {
             triangleVerticesOfL[i] /= 132.0;
-            if (i % 3 == 0) triangleVerticesOfL[i] += 0.5;
+            if (i % 3 == 0) triangleVerticesOfL[i] += 0.25;
         }
     }
 
@@ -411,24 +416,50 @@ function resetSecVertices() {
  * Scatter the logo
  */
 function scatter() {
-    let distance = 0.25;
-    for (let i = 0; i < triangleVerticesOfI.length; i += 9) {
-        let radian = degToRad(Math.random()*359);
-        triangleVerticesOfI[i] += distance / mulScatter * Math.cos(radian);
-        triangleVerticesOfI[i+1] += distance / mulScatter * Math.sin(radian);
-        triangleVerticesOfI[i+3] += distance / mulScatter * Math.cos(radian);
-        triangleVerticesOfI[i+4] += distance / mulScatter * Math.sin(radian);
-        triangleVerticesOfI[i+6] += distance / mulScatter * Math.cos(radian);
-        triangleVerticesOfI[i+7] += distance / mulScatter * Math.sin(radian);
-    }
-    for (let i = 0; i < triangleVerticesOfL.length; i += 9) {
-        let radian = degToRad(Math.random()*359);
-        triangleVerticesOfL[i] += distance / mulScatter * Math.cos(radian);
-        triangleVerticesOfL[i+1] += distance / mulScatter * Math.sin(radian);
-        triangleVerticesOfL[i+3] += distance / mulScatter * Math.cos(radian);
-        triangleVerticesOfL[i+4] += distance / mulScatter * Math.sin(radian);
-        triangleVerticesOfL[i+6] += distance / mulScatter * Math.cos(radian);
-        triangleVerticesOfL[i+7] += distance / mulScatter * Math.sin(radian);
+    let distance = (scatterSpeed*2 + 0.01) * 0.01 / 2;
+    let radian;
+    if(!incOrDec) {
+        for (let i = 0; i < triangleVerticesOfI.length; i += 9) {
+            radian = Math.atan(triangleVerticesOfI[i+1] / triangleVerticesOfI[i]);
+            if (triangleVerticesOfI[i] < 0) radian += Math.PI;
+            triangleVerticesOfI[i] += distance * Math.cos(radian);
+            triangleVerticesOfI[i+1] += distance * Math.sin(radian);
+            triangleVerticesOfI[i+3] += distance * Math.cos(radian);
+            triangleVerticesOfI[i+4] += distance * Math.sin(radian);
+            triangleVerticesOfI[i+6] += distance * Math.cos(radian);
+            triangleVerticesOfI[i+7] += distance * Math.sin(radian);
+        }
+        for (let i = 0; i < triangleVerticesOfL.length; i += 9) {
+            radian = Math.atan(triangleVerticesOfL[i+1] / triangleVerticesOfL[i]);
+            if (triangleVerticesOfL[i] < 0) radian += Math.PI;
+            triangleVerticesOfL[i] += distance * Math.cos(radian);
+            triangleVerticesOfL[i+1] += distance * Math.sin(radian);
+            triangleVerticesOfL[i+3] += distance * Math.cos(radian);
+            triangleVerticesOfL[i+4] += distance * Math.sin(radian);
+            triangleVerticesOfL[i+6] += distance * Math.cos(radian);
+            triangleVerticesOfL[i+7] += distance * Math.sin(radian);
+        }
+    } else {
+        for (let i = 0; i < triangleVerticesOfI.length; i += 9) {
+            radian = Math.atan(triangleVerticesOfI[i+1] / triangleVerticesOfI[i]);
+            if (triangleVerticesOfI[i] < 0) radian += Math.PI;
+            triangleVerticesOfI[i] -= distance * Math.cos(radian);
+            triangleVerticesOfI[i+1] -= distance * Math.sin(radian);
+            triangleVerticesOfI[i+3] -= distance * Math.cos(radian);
+            triangleVerticesOfI[i+4] -= distance * Math.sin(radian);
+            triangleVerticesOfI[i+6] -= distance * Math.cos(radian);
+            triangleVerticesOfI[i+7] -= distance * Math.sin(radian);
+        }
+        for (let i = 0; i < triangleVerticesOfL.length; i += 9) {
+            radian = Math.atan(triangleVerticesOfL[i+1] / triangleVerticesOfL[i]);
+            if (triangleVerticesOfL[i] < 0) radian += Math.PI;
+            triangleVerticesOfL[i] -= distance * Math.cos(radian);
+            triangleVerticesOfL[i+1] -= distance * Math.sin(radian);
+            triangleVerticesOfL[i+3] -= distance * Math.cos(radian);
+            triangleVerticesOfL[i+4] -= distance * Math.sin(radian);
+            triangleVerticesOfL[i+6] -= distance * Math.cos(radian);
+            triangleVerticesOfL[i+7] -= distance * Math.sin(radian);
+        }
     }
 }
 
@@ -456,57 +487,66 @@ function loadFirAniColors(numVertices) {
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfI);
 
     // Generate colors
-    let colors = [
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
-    ];
+    resetFirColors();
 
     // Fit colors into [0.0, 255.0]
-    for (let i = 0; i < colors.length; i++) {
-        colors[i] /= 255.0;
+    for (let i = 0; i < colorsOfI.length; i++) {
+        colorsOfI[i] /= 255.0;
     }
 
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfI), gl.STATIC_DRAW);
     vertexColorBufferOfI.itemSize = 4;
     vertexColorBufferOfI.numItems = numVertices;
+}
+
+
+
+/**
+ * Reset colorsOfI to original color of logo I
+ */
+function resetFirColors() {
+    colorsOfI = [
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
+    ];
 }
 
 
@@ -518,83 +558,7 @@ function loadFirAniColors(numVertices) {
  */
 function loadSecAniColors(numVerticesOfI, numVerticesOfL) {
     // Generate colors
-    let colorsOfI = [
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
-    ];
-
-    let colorsOfL = [
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-        203,  46,   0, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
-          0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
-    ];
+    resetSecColors();
 
     // Fit colors into [0.0, 255.0]
     for (let i = 0; i < colorsOfI.length; i++) {
@@ -615,6 +579,50 @@ function loadSecAniColors(numVerticesOfI, numVerticesOfL) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfL), gl.STATIC_DRAW);
     vertexColorBufferOfL.itemSize = 4;
     vertexColorBufferOfL.numItems = numVerticesOfL;
+}
+
+
+
+/**
+ * Reset two color arrays to original colors
+ */
+function resetSecColors() {
+    resetFirColors();
+
+    colorsOfL = [
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        203,  46,   0, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,    0,   0, 102, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,  203,  46,   0, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
+        0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0
+    ];
 }
 
 
@@ -700,7 +708,7 @@ function transformFirAni() {
  */
 function transformSecAni() {
     // Rotate around z axis
-    mat4.fromZRotation(mvMatrix, degToRad(defAngle));
+    mat4.fromYRotation(mvMatrix, degToRad(defAngle));
 }
 
 
@@ -746,17 +754,22 @@ function animateSec() {
     // Rotate the logo around z axis
     defAngle = (defAngle + 0.5) % 360;
 
-    // Stay in complete logo for 100 frames
-    // After 100 frames, scatter triangles
-    count++;
-    if (count > 100) {
-        mulScatter += 0.5;
-        fReset = false;
+    fReset = true;
+    if (scatterSpeed <= 0) {
+        incOrDec = true;
     }
-    if (mulScatter > 100) {
-        fReset = true;
-        count = 0;
-        mulScatter = 1;
+    else if (scatterSpeed >= 1) {
+        incOrDec = false;
+        if (count > 165) {
+            count = 0;
+            fReset = true;
+        }
+        count++;
+    }
+    if (count > 165) {
+        fReset = false;
+        if (incOrDec) scatterSpeed += 0.01;
+        else scatterSpeed -= 0.01;
     }
 
     setupBuffers(numVertices);
@@ -794,10 +807,23 @@ function tick() {
  * Toggle canvas when radio button is checked
  */
 function myClick() {
-    if(document.getElementById("canvas1").checked)
+    if(document.getElementById("canvas1").checked) {
         animation = 0;
-    else
+        defAngle = 0;
+        scaleSize = 1;
+        incOrDec = true;
+        nonUniStage = 0;
+    }
+    else {
         animation = 1;
+        defAngle = 0;
+        fReset = true;
+        count = 0;
+        scatterSpeed = 1;
+        incOrDec = false;
+    }
 
+    resetSecVertices();
+    resetSecColors();
     setupBuffers(numVertices);
 }
