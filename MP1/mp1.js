@@ -1,5 +1,5 @@
 /**
- * @file A simple WebGL example drawing Illinois logo
+ * @file A simple WebGL example drawing Illinois logo and own animation
  * @author Steven Yuan <yhyuan2@illinois.edu>
  */
 
@@ -12,17 +12,17 @@ var canvas;
 /** @global A simple GLSL shader program */
 var shaderProgram;
 
-/** @global Array holding the triangle vertices of logo I*/
+/** @global Array holding the triangle vertices of logo I */
 var triangleVerticesOfI;
 
-/** @global Array holding the triangle vertices of logo L*/
+/** @global Array holding the triangle vertices of logo L */
 var triangleVerticesOfL;
 
-/** @global Array holding the colors of logo I*/
-var colorsOfI;
+/** @global Array holding the colors of logo I */
+var triangleColorsOfI;
 
-/** @global Array holding the colors of logo L*/
-var colorsOfL;
+/** @global Array holding the colors of logo L */
+var triangleColorsOfL;
 
 /** @global The WebGL buffer holding the triangle vertices of logo I */
 var vertexPositionBufferOfI;
@@ -42,15 +42,13 @@ var mvMatrix = mat4.create();
 /** @global The Projection matrix */
 var pMatrix = mat4.create();
 
-/** @global The angle of rotation for first animation*/
+/** @global The angle of rotation */
 var defAngle = 0;
 
-/** @global True for increasing scaleSize => Make logo smaller
-            False for decreasing scaleSize => Make logo bigger
-            For first animation                                 */
+/** @global True for increasing scale size or speed of scattering, false of the otherwise */
 var incOrDec = true;
 
-/** @global The value of scaling for first animation*/
+/** @global The value of scaling for first animation */
 var scaleSize = 1;
 
 /** @global Number of vertices in two animations' object individually */
@@ -68,7 +66,8 @@ var scatterSpeed = 1;
 /** @global Flag for resetting vertices of second animation */
 var fReset = true;
 
-var count = 0;
+/** @global Time before scattering */
+var time = 0;
 
 
 
@@ -77,22 +76,16 @@ var count = 0;
 
 
 /**
- * Sends projection/modelview matrices to shader
+ * Startup function called from html code to start program.
  */
-function setMatrixUniforms() {
-    gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
-    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
-}
-
-
-
-/**
- * Translates degrees to radians
- * @param {Number} degrees Degree input to function
- * @return {Number} The radians that correspond to the degree input
- */
-function degToRad(degrees) {
-    return degrees * Math.PI / 180;
+function startup() {
+    canvas = document.getElementById("myGLCanvas");
+    gl = createGLContext(canvas);
+    setupShaders();
+    setupBuffers(numVertices);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    tick();
 }
 
 
@@ -121,6 +114,34 @@ function createGLContext(canvas) {
     }
 
     return context;
+}
+
+
+
+/**
+ * Setup the fragment and vertex shaders
+ */
+function setupShaders() {
+    let vertexShader = loadShaderFromDOM("shader-vs");
+    let fragmentShader = loadShaderFromDOM("shader-fs");
+
+    shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        alert("Failed to setup shaders");
+    }
+
+    gl.useProgram(shaderProgram);
+    shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+    gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+    shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+    gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+    shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+    shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
 }
 
 
@@ -172,29 +193,16 @@ function loadShaderFromDOM(id) {
 
 
 /**
- * Setup the fragment and vertex shaders
+ * Populate buffers with data
+ * @param {Array} numVertices number of vertices to use in individual animation
  */
-function setupShaders() {
-    let vertexShader = loadShaderFromDOM("shader-vs");
-    let fragmentShader = loadShaderFromDOM("shader-fs");
+function setupBuffers(numVertices) {
 
-    shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
+    //Generate the vertex positions
+    loadVertices(numVertices);
 
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        alert("Failed to setup shaders");
-    }
-
-    gl.useProgram(shaderProgram);
-    shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-    gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-
-    shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-    gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
-    shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-    shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+    //Generate the vertex colors
+    loadColors(numVertices);
 }
 
 
@@ -213,8 +221,8 @@ function loadVertices(numVertices) {
 
 
 /**
- * Populate vertex buffer with data of animation 1
- * @param {Number} numVertices number of vertices to use in animation 1
+ * Populate vertex buffer with data of first animation
+ * @param {Number} numVertices number of vertices to use in first animation
  */
 function loadFirAniVertices(numVertices) {
     vertexPositionBufferOfI = gl.createBuffer();
@@ -227,10 +235,10 @@ function loadFirAniVertices(numVertices) {
     nonUniTransform();
 
     // Fit coordinates into [-1.0, 1.0]
-    for (let i = 0; i < triangleVerticesOfI.length; i++) {
+    for (let i = 0; i < triangleVerticesOfI.length; i++)
         triangleVerticesOfI[i] /= 33.0;
-    }
 
+    // Buffer vertices of I
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVerticesOfI), gl.DYNAMIC_DRAW);
     vertexPositionBufferOfI.itemSize = 3;
     vertexPositionBufferOfI.numberOfItems = numVertices;
@@ -239,57 +247,57 @@ function loadFirAniVertices(numVertices) {
 
 
 /**
- * Reset triangleVertices to original logo for first animation
+ * Reset triangleVerticesOfI to original logo I for first animation
  */
 function resetFirVertices() {
     triangleVerticesOfI = [
         -22,  33, 0.0,  -22,  24, 0.0,  -12,  24, 0.0,
         -22,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
-          0,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
-          0,  33, 0.0,    0,  24, 0.0,  -12,  24, 0.0,
-          0,  33, 0.0,    0,  24, 0.0,   12,  24, 0.0,
-          0,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
-         22,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
-         22,  33, 0.0,   22,  24, 0.0,   12,  24, 0.0,
+        0,  33, 0.0,  -12,  33, 0.0,  -12,  24, 0.0,
+        0,  33, 0.0,    0,  24, 0.0,  -12,  24, 0.0,
+        0,  33, 0.0,    0,  24, 0.0,   12,  24, 0.0,
+        0,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
+        22,  33, 0.0,   12,  33, 0.0,   12,  24, 0.0,
+        22,  33, 0.0,   22,  24, 0.0,   12,  24, 0.0,
         -22,  24, 0.0,  -22,  15, 0.0,  -12,  24, 0.0,
         -12,  15, 0.0,  -22,  15, 0.0,  -12,  24, 0.0,
         -12,  15, 0.0,    0,  15, 0.0,  -12,  24, 0.0,
-          0,  15, 0.0,  -12,  24, 0.0,    0,  24, 0.0,
-          0,  15, 0.0,   12,  24, 0.0,    0,  24, 0.0,
-         12,  15, 0.0,    0,  15, 0.0,   12,  24, 0.0,
-         12,  15, 0.0,   22,  15, 0.0,   12,  24, 0.0,
-         22,  24, 0.0,   22,  15, 0.0,   12,  24, 0.0,
+        0,  15, 0.0,  -12,  24, 0.0,    0,  24, 0.0,
+        0,  15, 0.0,   12,  24, 0.0,    0,  24, 0.0,
+        12,  15, 0.0,    0,  15, 0.0,   12,  24, 0.0,
+        12,  15, 0.0,   22,  15, 0.0,   12,  24, 0.0,
+        22,  24, 0.0,   22,  15, 0.0,   12,  24, 0.0,
         -12,  15, 0.0,  -12,   0, 0.0,    0,   0, 0.0,
         -12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
-         12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
-         12,  15, 0.0,   12,   0, 0.0,    0,   0, 0.0,
+        12,  15, 0.0,    0,  15, 0.0,    0,   0, 0.0,
+        12,  15, 0.0,   12,   0, 0.0,    0,   0, 0.0,
         -12,   0, 0.0,  -12, -15, 0.0,    0,   0, 0.0,
         -12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
-         12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
-         12,   0, 0.0,   12, -15, 0.0,    0,   0, 0.0,
+        12, -15, 0.0,    0,   0, 0.0,    0, -15, 0.0,
+        12,   0, 0.0,   12, -15, 0.0,    0,   0, 0.0,
         -22, -15, 0.0,  -22, -24, 0.0,  -12, -24, 0.0,
         -22, -15, 0.0,  -12, -15, 0.0,  -12, -24, 0.0,
         -12, -15, 0.0,  -12, -24, 0.0,    0, -15, 0.0,
-          0, -15, 0.0,    0, -24, 0.0,  -12, -24, 0.0,
-          0, -15, 0.0,    0, -24, 0.0,   12, -24, 0.0,
-         12, -15, 0.0,   12, -24, 0.0,    0, -15, 0.0,
-         22, -15, 0.0,   12, -15, 0.0,   12, -24, 0.0,
-         22, -15, 0.0,   22, -24, 0.0,   12, -24, 0.0,
+        0, -15, 0.0,    0, -24, 0.0,  -12, -24, 0.0,
+        0, -15, 0.0,    0, -24, 0.0,   12, -24, 0.0,
+        12, -15, 0.0,   12, -24, 0.0,    0, -15, 0.0,
+        22, -15, 0.0,   12, -15, 0.0,   12, -24, 0.0,
+        22, -15, 0.0,   22, -24, 0.0,   12, -24, 0.0,
         -22, -24, 0.0,  -22, -33, 0.0,  -12, -24, 0.0,
         -12, -33, 0.0,  -22, -33, 0.0,  -12, -24, 0.0,
         -12, -33, 0.0,    0, -33, 0.0,  -12, -24, 0.0,
-          0, -33, 0.0,  -12, -24, 0.0,    0, -24, 0.0,
-          0, -33, 0.0,   12, -24, 0.0,    0, -24, 0.0,
-         12, -33, 0.0,    0, -33, 0.0,   12, -24, 0.0,
-         12, -33, 0.0,   22, -33, 0.0,   12, -24, 0.0,
-         22, -24, 0.0,   22, -33, 0.0,   12, -24, 0.0
+        0, -33, 0.0,  -12, -24, 0.0,    0, -24, 0.0,
+        0, -33, 0.0,   12, -24, 0.0,    0, -24, 0.0,
+        12, -33, 0.0,    0, -33, 0.0,   12, -24, 0.0,
+        12, -33, 0.0,   22, -33, 0.0,   12, -24, 0.0,
+        22, -24, 0.0,   22, -33, 0.0,   12, -24, 0.0
     ];
 }
 
 
 
 /**
- * Non-uniform transformation directly changes buffer
+ * Non-uniform transformation directly changes vertex buffer
  */
 function nonUniTransform() {
     for (let i = 0; i < triangleVerticesOfI.length; i++) {
@@ -330,35 +338,39 @@ function nonUniTransform() {
 
 
 /**
- * Populate vertex buffer with data of animation 2
+ * Populate vertex buffer with data of second animation
  * @param {Number} numVerticesOfI number of vertices to use for logo I
  * @param {Number} numVerticesOfL number of vertices to use for logo L
  */
 function loadSecAniVertices(numVerticesOfI, numVerticesOfL) {
-    // Generate the vertex positions
+    // Generate the vertex positions if flag fReset is set
     if (fReset) resetSecVertices();
 
-    // Scatter triangles
-    if (!fReset) scatter();
+    // Scatter triangles if fReset isn't set, so vertex can be buffered
+    if (!fReset) scatterAssemble();
 
-    // Fit coordinates into [-1.0, 1.0]
+    // Fit coordinates into [-1.0, 1.0], if flag fReset is set
     if (fReset) {
         for (let i = 0; i < triangleVerticesOfI.length; i++) {
             triangleVerticesOfI[i] /= 132.0;
+            // Move I to (-0.25, 0, 0)
             if (i % 3 == 0) triangleVerticesOfI[i] -= 0.25;
         }
         for (let i = 0; i < triangleVerticesOfL.length; i++) {
             triangleVerticesOfL[i] /= 132.0;
+            // Move L to (0.25, 0, 0)
             if (i % 3 == 0) triangleVerticesOfL[i] += 0.25;
         }
     }
 
+    // Buffer vertices of I
     vertexPositionBufferOfI = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfI);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVerticesOfI), gl.DYNAMIC_DRAW);
     vertexPositionBufferOfI.itemSize = 3;
     vertexPositionBufferOfI.numberOfItems = numVerticesOfI;
 
+    // Buffer vertices of L
     vertexPositionBufferOfL = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfL);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleVerticesOfL), gl.DYNAMIC_DRAW);
@@ -369,59 +381,66 @@ function loadSecAniVertices(numVerticesOfI, numVerticesOfL) {
 
 
 /**
- * Reset triangleVertices to original logo for second animation
+ * Reset vertices to original logo for second animation
  */
 function resetSecVertices() {
+    // Reset triangleVerticesOfI
     resetFirVertices();
 
     triangleVerticesOfL = [
         -22,  33, 1.0,  -22,  24, 1.0,  -12,  24, 1.0,
         -22,  33, 1.0,  -12,  33, 1.0,  -12,  24, 1.0,
-          0,  33, 1.0,  -12,  33, 1.0,  -12,  24, 1.0,
-          0,  33, 1.0,    0,  24, 1.0,  -12,  24, 1.0,
+        0,  33, 1.0,  -12,  33, 1.0,  -12,  24, 1.0,
+        0,  33, 1.0,    0,  24, 1.0,  -12,  24, 1.0,
         -22,  24, 1.0,  -22,  15, 1.0,  -12,  24, 1.0,
         -12,  15, 1.0,  -22,  15, 1.0,  -12,  24, 1.0,
         -12,  15, 1.0,    0,  15, 1.0,  -12,  24, 1.0,
-          0,  15, 1.0,  -12,  24, 1.0,    0,  24, 1.0,
+        0,  15, 1.0,  -12,  24, 1.0,    0,  24, 1.0,
         -22,  15, 1.0,  -22,   0, 1.0,  -12,   0, 1.0,
         -22,  15, 1.0,  -12,  15, 1.0,  -12,   0, 1.0,
-          0,  15, 1.0,  -12,  15, 1.0,  -12,   0, 1.0,
-          0,  15, 1.0,    0,   0, 1.0,  -12,   0, 1.0,
+        0,  15, 1.0,  -12,  15, 1.0,  -12,   0, 1.0,
+        0,  15, 1.0,    0,   0, 1.0,  -12,   0, 1.0,
         -22,   0, 1.0,  -22, -15, 1.0,  -12,   0, 1.0,
         -22, -15, 1.0,  -12,   0, 1.0,  -12, -15, 1.0,
-          0, -15, 1.0,  -12,   0, 1.0,  -12, -15, 1.0,
-          0,   0, 1.0,    0, -15, 1.0,  -12,   0, 1.0,
+        0, -15, 1.0,  -12,   0, 1.0,  -12, -15, 1.0,
+        0,   0, 1.0,    0, -15, 1.0,  -12,   0, 1.0,
         -22, -15, 1.0,  -22, -24, 1.0,  -12, -24, 1.0,
         -22, -15, 1.0,  -12, -15, 1.0,  -12, -24, 1.0,
         -12, -15, 1.0,  -12, -24, 1.0,    0, -15, 1.0,
-          0, -15, 1.0,    0, -24, 1.0,  -12, -24, 1.0,
-          0, -15, 1.0,    0, -24, 1.0,   12, -24, 1.0,
-         12, -15, 1.0,   12, -24, 1.0,    0, -15, 1.0,
-         22, -15, 1.0,   12, -15, 1.0,   12, -24, 1.0,
-         22, -15, 1.0,   22, -24, 1.0,   12, -24, 1.0,
+        0, -15, 1.0,    0, -24, 1.0,  -12, -24, 1.0,
+        0, -15, 1.0,    0, -24, 1.0,   12, -24, 1.0,
+        12, -15, 1.0,   12, -24, 1.0,    0, -15, 1.0,
+        22, -15, 1.0,   12, -15, 1.0,   12, -24, 1.0,
+        22, -15, 1.0,   22, -24, 1.0,   12, -24, 1.0,
         -22, -24, 1.0,  -22, -33, 1.0,  -12, -24, 1.0,
         -12, -33, 1.0,  -22, -33, 1.0,  -12, -24, 1.0,
         -12, -33, 1.0,    0, -33, 1.0,  -12, -24, 1.0,
-          0, -33, 1.0,  -12, -24, 1.0,    0, -24, 1.0,
-          0, -33, 1.0,   12, -24, 1.0,    0, -24, 1.0,
-         12, -33, 1.0,    0, -33, 1.0,   12, -24, 1.0,
-         12, -33, 1.0,   22, -33, 1.0,   12, -24, 1.0,
-         22, -24, 1.0,   22, -33, 1.0,   12, -24, 1.0
+        0, -33, 1.0,  -12, -24, 1.0,    0, -24, 1.0,
+        0, -33, 1.0,   12, -24, 1.0,    0, -24, 1.0,
+        12, -33, 1.0,    0, -33, 1.0,   12, -24, 1.0,
+        12, -33, 1.0,   22, -33, 1.0,   12, -24, 1.0,
+        22, -24, 1.0,   22, -33, 1.0,   12, -24, 1.0
     ];
 }
 
 
-
 /**
- * Scatter the logo
+ * Scatter or assemble I and L
  */
-function scatter() {
+function scatterAssemble() {
+    // Calculate distance that triangles should move in this tick
     let distance = (scatterSpeed*2 + 0.01) * 0.01 / 2;
+    // For holding moving direction
     let radian;
     if(!incOrDec) {
+        // scatterSpeed is decreasing, and logos are scattering
+        // Scatter logo I
         for (let i = 0; i < triangleVerticesOfI.length; i += 9) {
+            // Calculate direction
             radian = Math.atan(triangleVerticesOfI[i+1] / triangleVerticesOfI[i]);
             if (triangleVerticesOfI[i] < 0) radian += Math.PI;
+
+            // Update vertices
             triangleVerticesOfI[i] += distance * Math.cos(radian);
             triangleVerticesOfI[i+1] += distance * Math.sin(radian);
             triangleVerticesOfI[i+3] += distance * Math.cos(radian);
@@ -429,9 +448,14 @@ function scatter() {
             triangleVerticesOfI[i+6] += distance * Math.cos(radian);
             triangleVerticesOfI[i+7] += distance * Math.sin(radian);
         }
+
+        // Scatter logo L
         for (let i = 0; i < triangleVerticesOfL.length; i += 9) {
+            // Calculate direction
             radian = Math.atan(triangleVerticesOfL[i+1] / triangleVerticesOfL[i]);
             if (triangleVerticesOfL[i] < 0) radian += Math.PI;
+
+            // Update vertices
             triangleVerticesOfL[i] += distance * Math.cos(radian);
             triangleVerticesOfL[i+1] += distance * Math.sin(radian);
             triangleVerticesOfL[i+3] += distance * Math.cos(radian);
@@ -440,9 +464,14 @@ function scatter() {
             triangleVerticesOfL[i+7] += distance * Math.sin(radian);
         }
     } else {
+        // scatterSpeed is increasing, and logos are assembling
+        // Assemble logo I
         for (let i = 0; i < triangleVerticesOfI.length; i += 9) {
+            // Calculate direction
             radian = Math.atan(triangleVerticesOfI[i+1] / triangleVerticesOfI[i]);
             if (triangleVerticesOfI[i] < 0) radian += Math.PI;
+
+            // Update vertices
             triangleVerticesOfI[i] -= distance * Math.cos(radian);
             triangleVerticesOfI[i+1] -= distance * Math.sin(radian);
             triangleVerticesOfI[i+3] -= distance * Math.cos(radian);
@@ -450,9 +479,14 @@ function scatter() {
             triangleVerticesOfI[i+6] -= distance * Math.cos(radian);
             triangleVerticesOfI[i+7] -= distance * Math.sin(radian);
         }
+
+        // Assemble logo L
         for (let i = 0; i < triangleVerticesOfL.length; i += 9) {
+            // Calculate direction
             radian = Math.atan(triangleVerticesOfL[i+1] / triangleVerticesOfL[i]);
             if (triangleVerticesOfL[i] < 0) radian += Math.PI;
+
+            // Update vertices
             triangleVerticesOfL[i] -= distance * Math.cos(radian);
             triangleVerticesOfL[i+1] -= distance * Math.sin(radian);
             triangleVerticesOfL[i+3] -= distance * Math.cos(radian);
@@ -479,8 +513,8 @@ function loadColors(numVertices) {
 
 
 /**
- * Populate color buffer with data of animation 1
- * @param {Number} numVertices number of vertices to use in animation 1
+ * Populate color buffer with data of first animation
+ * @param {Number} numVertices number of vertices to use in first animation
  */
 function loadFirAniColors(numVertices) {
     vertexColorBufferOfI = gl.createBuffer();
@@ -490,11 +524,11 @@ function loadFirAniColors(numVertices) {
     resetFirColors();
 
     // Fit colors into [0.0, 255.0]
-    for (let i = 0; i < colorsOfI.length; i++) {
-        colorsOfI[i] /= 255.0;
-    }
+    for (let i = 0; i < triangleColorsOfI.length; i++)
+        triangleColorsOfI[i] /= 255.0;
 
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfI), gl.STATIC_DRAW);
+    // Buffer colors
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleColorsOfI), gl.STATIC_DRAW);
     vertexColorBufferOfI.itemSize = 4;
     vertexColorBufferOfI.numItems = numVertices;
 }
@@ -502,10 +536,10 @@ function loadFirAniColors(numVertices) {
 
 
 /**
- * Reset colorsOfI to original color of logo I
+ * Reset colorsOfI to original color of logo I for first animation
  */
 function resetFirColors() {
-    colorsOfI = [
+    triangleColorsOfI = [
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
@@ -552,7 +586,7 @@ function resetFirColors() {
 
 
 /**
- * Populate color buffer with data of animation 2
+ * Populate color buffer with data of second animation
  * @param {Number} numVerticesOfI number of vertices to use for logo I
  * @param {Number} numVerticesOfL number of vertices to use for logo L
  */
@@ -561,22 +595,22 @@ function loadSecAniColors(numVerticesOfI, numVerticesOfL) {
     resetSecColors();
 
     // Fit colors into [0.0, 255.0]
-    for (let i = 0; i < colorsOfI.length; i++) {
-        colorsOfI[i] /= 255.0;
-    }
-    for (let i = 0; i < colorsOfL.length; i++) {
-        colorsOfL[i] /= 255.0;
-    }
+    for (let i = 0; i < triangleColorsOfI.length; i++)
+        triangleColorsOfI[i] /= 255.0;
+    for (let i = 0; i < triangleColorsOfL.length; i++)
+        triangleColorsOfL[i] /= 255.0;
 
+    // Buffer colors of I
     vertexColorBufferOfI = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfI);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfI), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleColorsOfI), gl.STATIC_DRAW);
     vertexColorBufferOfI.itemSize = 4;
     vertexColorBufferOfI.numItems = numVerticesOfI;
 
+    // Buffer colors of L
     vertexColorBufferOfL = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfL);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorsOfL), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(triangleColorsOfL), gl.STATIC_DRAW);
     vertexColorBufferOfL.itemSize = 4;
     vertexColorBufferOfL.numItems = numVerticesOfL;
 }
@@ -584,12 +618,13 @@ function loadSecAniColors(numVerticesOfI, numVerticesOfL) {
 
 
 /**
- * Reset two color arrays to original colors
+ * Reset colors to original logo for second animation
  */
 function resetSecColors() {
+    // Reset triangleColorsOfI
     resetFirColors();
 
-    colorsOfL = [
+    triangleColorsOfL = [
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
         0,   0, 102, 1.0,    0,   0, 102, 1.0,  203,  46,   0, 1.0,
@@ -628,16 +663,12 @@ function resetSecColors() {
 
 
 /**
- * Populate buffers with data
- * @param {Array} numVertices number of vertices to use in individual animation
+ * Tick called for every animation frame.
  */
-function setupBuffers(numVertices) {
-
-    //Generate the vertex positions
-    loadVertices(numVertices);
-
-    //Generate the vertex colors
-    loadColors(numVertices);
+function tick() {
+    requestAnimFrame(tick);
+    draw();
+    animate();
 }
 
 
@@ -655,14 +686,16 @@ function draw() {
     transform();
     setMatrixUniforms();
 
+    // Draw logo I
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfI);
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-                            vertexPositionBufferOfI.itemSize, gl.FLOAT, false, 0, 0);
+        vertexPositionBufferOfI.itemSize, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBufferOfI);
     gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
-                            vertexColorBufferOfI.itemSize, gl.FLOAT, false, 0, 0);
+        vertexColorBufferOfI.itemSize, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBufferOfI.numberOfItems);
 
+    // If we are drawing second animation, draw logo L
     if (animation) {
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBufferOfL);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
@@ -694,7 +727,7 @@ function transform() {
 function transformFirAni() {
     // Translate on Lissajous Curve
     mat4.fromTranslation(mvMatrix, [Math.sin(3*degToRad(defAngle) + Math.PI/2.0),
-        Math.sin(2*degToRad(defAngle)), 0]);
+                            Math.sin(2*degToRad(defAngle)), 0]);
     // Rotate around z axis
     mat4.rotateZ(mvMatrix, mvMatrix, degToRad(defAngle));
     // Change logo size
@@ -707,8 +740,29 @@ function transformFirAni() {
  * Add transformations to matrix of second animation
  */
 function transformSecAni() {
-    // Rotate around z axis
+    // Rotate around y axis
     mat4.fromYRotation(mvMatrix, degToRad(defAngle));
+}
+
+
+
+/**
+ * Translates degrees to radians
+ * @param {Number} degrees Degree input to function
+ * @return {Number} The radians that correspond to the degree input
+ */
+function degToRad(degrees) {
+    return degrees * Math.PI / 180;
+}
+
+
+
+/**
+ * Sends projection/modelview matrices to shader
+ */
+function setMatrixUniforms() {
+    gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
 }
 
 
@@ -732,9 +786,9 @@ function animateFir() {
     // Rotate the logo around z axis
     defAngle = (defAngle + 0.5) % 360;
 
-    // Make logo change size from small to big and from big to small
-    if(scaleSize == 0) incOrDec = true;
-    else if(scaleSize == 10) incOrDec = false;
+    // Change logo size from small to big and from big to small
+    if(scaleSize <= 0) incOrDec = true;
+    else if(scaleSize >= 10) incOrDec = false;
     if(incOrDec) scaleSize += 0.125;
     else scaleSize -= 0.125;
 
@@ -751,22 +805,31 @@ function animateFir() {
  * Animate second animation
  */
 function animateSec() {
-    // Rotate the logo around z axis
-    defAngle = (defAngle + 0.5) % 360;
+    // Rotate the logo around y axis
+    defAngle = (defAngle + 1) % 360;
 
+    // Always reset vertices and colors unless starting scattering and assembling
     fReset = true;
+
     if (scatterSpeed <= 0) {
+        // Start increasing speed and assembling logos
         incOrDec = true;
     }
     else if (scatterSpeed >= 1) {
+        // Start decreasing speed and scattering logos
         incOrDec = false;
-        if (count > 165) {
-            count = 0;
+
+        // If logos scatter and then assemble to original location,
+        // reset vertices and colors and restart timer
+        if (time > 165) {
+            time = 0;
             fReset = true;
         }
-        count++;
+        time++;
     }
-    if (count > 165) {
+
+    // Start scattering and assembling
+    if (time > 165) {
         fReset = false;
         if (incOrDec) scatterSpeed += 0.01;
         else scatterSpeed -= 0.01;
@@ -778,36 +841,12 @@ function animateSec() {
 
 
 /**
- * Startup function called from html code to start program.
- */
- function startup() {
-     canvas = document.getElementById("myGLCanvas");
-     gl = createGLContext(canvas);
-     setupShaders();
-     setupBuffers(numVertices);
-     gl.clearColor(1.0, 1.0, 1.0, 1.0);
-     gl.enable(gl.DEPTH_TEST);
-     tick();
-}
-
-
-
-/**
- * Tick called for every animation frame.
- */
-function tick() {
-    requestAnimFrame(tick);
-    draw();
-    animate();
-}
-
-
-
-/**
  * Toggle canvas when radio button is checked
  */
 function myClick() {
     if(document.getElementById("canvas1").checked) {
+        // When canvas1 is checked,
+        // initialize all variables for starting first animation
         animation = 0;
         defAngle = 0;
         scaleSize = 1;
@@ -815,14 +854,17 @@ function myClick() {
         nonUniStage = 0;
     }
     else {
+        // When canvas2 is checked,
+        // initialize all variables for starting second animation
         animation = 1;
         defAngle = 0;
         fReset = true;
-        count = 0;
+        time = 0;
         scatterSpeed = 1;
         incOrDec = false;
     }
 
+    // Reset vertices and colors and then start drawing
     resetSecVertices();
     resetSecColors();
     setupBuffers(numVertices);
