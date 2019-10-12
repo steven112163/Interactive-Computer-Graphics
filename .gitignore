@@ -3,6 +3,5 @@
 *.jpg
 *.txt
 *.PNG
-
-! MP1/
-! MP2/
+!MP1/
+!MP2/
