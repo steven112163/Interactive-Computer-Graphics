@@ -15,6 +15,7 @@
     uniform mat3 uNMatrix;
     varying vec3 vNormal;
     varying vec3 vPosition;
+    varying vec3 uKDiffuseManual;
 
     void main(void) {
         // Get the vertex position in eye coordinates
@@ -23,6 +24,23 @@
 
         // Calculate the normal (n)
         vNormal = normalize(uNMatrix * aVertexNormal);
+
+        if (aVertexPosition[2] < 0.03)
+            uKDiffuseManual = vec3(0.0 / 255.0, 0.0 / 255.0, 179.0 / 255.0);
+        else if (0.03 <= aVertexPosition[2] && aVertexPosition[2] < 0.06)
+            uKDiffuseManual = vec3(0.0 / 255.0, 102.0 / 255.0, 255.0 / 255.0);
+        else if (0.06 <= aVertexPosition[2] && aVertexPosition[2] < 0.09)
+            uKDiffuseManual = vec3(0.0 / 255.0, 153.0 / 255.0, 0.0 / 255.0);
+        else if (0.09 <= aVertexPosition[2] && aVertexPosition[2] < 0.12)
+            uKDiffuseManual = vec3(0.0 / 255.0, 255.0 / 255.0, 0.0 / 255.0);
+        else if (0.12 <= aVertexPosition[2] && aVertexPosition[2] < 0.15)
+            uKDiffuseManual = vec3(255.0 / 255.0, 255.0 / 255.0, 0.0 / 255.0);
+        else if (0.15 <= aVertexPosition[2] && aVertexPosition[2] < 0.18)
+            uKDiffuseManual = vec3(255.0 / 255.0, 153.0 / 255.0, 0.0 / 255.0);
+        else if (0.18 <= aVertexPosition[2] && aVertexPosition[2] < 0.21)
+            uKDiffuseManual = vec3(255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0);
+        else
+            uKDiffuseManual = vec3(204.0 / 255.0, 0.0 / 255.0, 204.0 / 255.0);
 
         gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
     }
@@ -42,7 +60,7 @@
 
     varying vec3 vNormal;
     varying vec3 vPosition;
-
+    varying vec3 uKDiffuseManual;
 
     void main(void) {
         // Calculate the vector (l) to the light source
@@ -69,7 +87,7 @@
 
         // Sum up all three reflection components and send to the fragment shader
         gl_FragColor = vec4(((uAmbientLightColor*uKAmbient)
-                    + (uDiffuseLightColor*uKDiffuse) * diffuseLightWeightning
+                    + (uDiffuseLightColor*uKDiffuseManual) * diffuseLightWeightning
                     + ((uSpecularLightColor*uKSpecular) * specularLightWeightning)), 1.0);
     }
 </script>
