@@ -36,10 +36,13 @@ vec3.set(transformVec, 0.0, 0.0, -2.0);
 /** @global An object holding the geometry for a 3D terrain */
 var myTerrain;
 
+/** @global Whether color changes according to height or not */
+var manualOrNot;
+
 
 // View parameters
 /** @global Location of the camera in world coordinates */
-var eyePt = vec3.fromValues(0.0, 0.0, 0.0);
+var eyePt = vec3.fromValues(0.0, 0.0, -1.1);
 /** @global Direction of the view in world coordinates */
 var viewDir = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
@@ -258,6 +261,9 @@ function setupShaders() {
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix");
+    shaderProgram.lHeightUniform = gl.getUniformLocation(shaderProgram, "lowestHeight");
+    shaderProgram.hHeightUniform = gl.getUniformLocation(shaderProgram, "highestHeight");
+    shaderProgram.manualUniform = gl.getUniformLocation(shaderProgram, "manualOrNot");
     shaderProgram.uniformLightPositionLoc = gl.getUniformLocation(shaderProgram, "uLightPosition");
     shaderProgram.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgram, "uAmbientLightColor");
     shaderProgram.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgram, "uDiffuseLightColor");
@@ -344,18 +350,23 @@ function draw() {
     mat4.rotateX(mvMatrix, mvMatrix, degToRad(-75));
     setMatrixUniforms();
     setLightUniforms(lightPosition, lAmbient, lDiffuse, lSpecular);
+    gl.uniform1f(shaderProgram.lHeightUniform, myTerrain.lowestHeight);
+    gl.uniform1f(shaderProgram.hHeightUniform, myTerrain.highestHeight);
 
     if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked)) {
+        gl.uniform1i(shaderProgram.manualUniform, 1);
         setMaterialUniforms(shininess, kAmbient, kTerrainDiffuse, kSpecular);
         myTerrain.drawTriangles();
     }
 
     if (document.getElementById("wirepoly").checked) {
+        gl.uniform1i(shaderProgram.manualUniform, 0);
         setMaterialUniforms(shininess, kAmbient, kEdgeBlack, kSpecular);
         myTerrain.drawEdges();
     }
 
     if (document.getElementById("wireframe").checked) {
+        gl.uniform1i(shaderProgram.manualUniform, 0);
         setMaterialUniforms(shininess, kAmbient, kEdgeWhite, kSpecular);
         myTerrain.drawEdges();
     }

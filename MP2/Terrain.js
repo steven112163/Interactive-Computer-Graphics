@@ -21,6 +21,9 @@ class Terrain {
         this.maxX = maxX;
         this.maxY = maxY;
 
+        this.lowestHeight = 0;
+        this.highestHeight = 0;
+
         // Allocate vertex array
         this.vBuffer = [];
         // Allocate triangle array
@@ -279,6 +282,17 @@ class Terrain {
                 this.getVertex(vertex, i, j);
                 vertex[2] += min;
                 this.setVertex(vertex, i, j);
+            }
+
+        // Set lowest and highest height
+        this.getVertex(vertex, 0, 0);
+        this.lowestHeight = vertex[2];
+        this.highestHeight = vertex[2];
+        for (let i = 0; i <= this.div; i++)
+            for (let j = 0; j <= this.div; j++) {
+                this.getVertex(vertex, i, j);
+                this.lowestHeight = (vertex[2] < this.lowestHeight) ? vertex[2] : this.lowestHeight;
+                this.highestHeight = (vertex[2] > this.highestHeight) ? vertex[2] : this.highestHeight;
             }
     }
 
