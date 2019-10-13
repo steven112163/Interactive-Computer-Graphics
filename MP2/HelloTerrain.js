@@ -49,7 +49,7 @@ var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [0, -7, -7];
+var lightPosition = [0, 3, 3];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0, 0, 0];
 /** @global Diffuse light color/intensity for Phong reflection */

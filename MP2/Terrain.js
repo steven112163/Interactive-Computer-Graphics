@@ -180,10 +180,6 @@ class Terrain {
                 this.vBuffer.push(this.minX + deltaX * j);
                 this.vBuffer.push(this.minY + deltaY * i);
                 this.vBuffer.push(0);
-
-                /*this.nBuffer.push(0);
-                this.nBuffer.push(0);
-                this.nBuffer.push(1);*/
             }
 
         for (let i = 0; i < this.div; i++)
@@ -220,13 +216,14 @@ class Terrain {
         let vecPtoVertex = vec3.create();
 
         for (let times = 0; times < N; times++) {
+            // Get a random point p in the plane
             vec3.set(p, Math.random() - this.maxX, Math.random() - this.maxY, 0);
-            //console.log("p ", p[0], " ", p[1], " ", p[2]);
 
+            // Get a random normal of the plane
             radian = (Math.random() * 360) * Math.PI / 180;
             vec3.set(n, Math.cos(radian), Math.sin(radian), 0);
-            //console.log("n ", n[0], " ", n[1], " ", n[2]);
 
+            // Move every vertex's position according to its side
             for (let i = 0; i <= this.div; i++)
                 for (let j = 0; j <= this.div; j++) {
                     this.getVertex(vertex, i, j);
@@ -238,6 +235,35 @@ class Terrain {
                 }
         }
 
+        // Make the terrain smoother
+        for (let i = 1; i < this.div; i++)
+            for (let j = 1; j < this.div; j++) {
+                this.getVertex(vertex, i, j);
+
+                let neighbors = [];
+                for (let k = 0; k < 8; k++)
+                    neighbors.push(vec3.create());
+                this.getVertex(neighbors[0], i, j + 1);
+                this.getVertex(neighbors[1], i + 1, j + 1);
+                this.getVertex(neighbors[2], i + 1, j);
+                this.getVertex(neighbors[3], i + 1, j - 1);
+                this.getVertex(neighbors[4], i, j - 1);
+                this.getVertex(neighbors[5], i - 1, j - 1);
+                this.getVertex(neighbors[6], i - 1, j);
+                this.getVertex(neighbors[7], i - 1, j + 1);
+
+                let average = 4 * vertex[2];
+                for (let k = 0; k < 8; k++)
+                    if (k % 2 == 0)
+                        average += 2 * neighbors[k][2];
+                    else
+                        average += neighbors[k][2];
+                average /= 16;
+                vertex[2] = average;
+                this.setVertex(vertex, i, j);
+            }
+
+        // Find the lowest position
         this.getVertex(vertex, 0, 0);
         let min = vertex[2];
         for (let i = 0; i <= this.div; i++)
@@ -245,6 +271,8 @@ class Terrain {
                 this.getVertex(vertex, i, j);
                 min = (vertex[2] < min) ? vertex[2] : min;
             }
+
+        // Move the whole place so that the lowest vertex's z is 0
         min = 0 - min;
         for (let i = 0; i <= this.div; i++)
             for (let j = 0; j <= this.div; j++) {
@@ -271,18 +299,19 @@ class Terrain {
                 this.getVertex(vertex, i, j);
                 vec3.set(vNormal, 0, 0, 0);
 
-                if ((0 < i && i < this.div) && (0 < j && j < this.div)) {
-                    // vertices in the plane
+                if ((0 < i && i < this.div) && (0 < j && j < this.div)) { // vertices in the plane
+                    // Get all neighbors
                     let neighbors = [];
                     for (let k = 0; k < 6; k++)
                         neighbors.push(vec3.create());
-                    this.getVertex(neighbors[0], i + 1, j);
-                    this.getVertex(neighbors[1], i, j + 1);
-                    this.getVertex(neighbors[2], i - 1, j + 1);
-                    this.getVertex(neighbors[3], i - 1, j);
-                    this.getVertex(neighbors[4], i, j - 1);
-                    this.getVertex(neighbors[5], i + 1, j - 1);
+                    this.getVertex(neighbors[0], i, j + 1);
+                    this.getVertex(neighbors[1], i + 1, j);
+                    this.getVertex(neighbors[2], i + 1, j - 1);
+                    this.getVertex(neighbors[3], i, j - 1);
+                    this.getVertex(neighbors[4], i - 1, j);
+                    this.getVertex(neighbors[5], i - 1, j + 1);
 
+                    // Calculate normals of neighbor surfaces
                     let neiSurfaceNormals = [];
                     for (let k = 0; k < 6; k++) {
                         vec3.subtract(a, neighbors[k], vertex);
@@ -291,64 +320,90 @@ class Terrain {
                         neiSurfaceNormals.push(crossProduct);
                     }
 
+                    // Sum all neighbor normals and normalize
                     for (let k = 0; k < 6; k++)
                         vec3.add(vNormal, vNormal, neiSurfaceNormals[k]);
                     vec3.normalize(vNormal, vNormal);
                 } else if ((i == 0 && j == 0) || (i == this.div && j == this.div) ||
-                    (i == 0 && j == this.div) || (i == this.div && j == 0)) {
-                    // vertices at four corners
-
+                    (i == 0 && j == this.div) || (i == this.div && j == 0)) { // vertices at four corners
+                    // Get all neighbors according to location of the vertex
+                    let neighbors = [];
                     if (i == 0 && j == 0) {
                         // vertex at the left bottom corner
-                        this.getVertex(a, i + 1, j);
-                        this.getVertex(b, i, j + 1);
+                        this.getVertex(a, i, j + 1);
+                        this.getVertex(b, i + 1, j);
                     } else if (i == this.div && j == this.div) {
                         // vertex at the right top corner
-                        this.getVertex(a, i - 1, j);
-                        this.getVertex(b, i, j - 1);
-                    } else if (i == 0 && j == this.div) {
-                        // vertex at the left top corner
                         this.getVertex(a, i, j - 1);
-                        this.getVertex(b, i + 1, j);
-                    } else {
-                        // vertex at the right bottom corner
-                        this.getVertex(a, i, j + 1);
                         this.getVertex(b, i - 1, j);
+                    } else if (i == 0 && j == this.div) {
+                        // vertex at the right bottom corner
+                        for (let k = 0; k < 3; k++)
+                            neighbors.push(vec3.create());
+                        this.getVertex(neighbors[0], i + 1, j);
+                        this.getVertex(neighbors[1], i + 1, j - 1);
+                        this.getVertex(neighbors[2], i, j - 1);
+                    } else {
+                        // vertex at the left top corner
+                        for (let k = 0; k < 3; k++)
+                            neighbors.push(vec3.create());
+                        this.getVertex(neighbors[0], i - 1, j);
+                        this.getVertex(neighbors[1], i - 1, j + 1);
+                        this.getVertex(neighbors[2], i, j + 1);
                     }
 
-                    vec3.subtract(a, a, vertex);
-                    vec3.subtract(b, b, vertex);
-                    vec3.cross(vNormal, a, b);
-                    vec3.normalize(vNormal, vNormal);
-                } else {
+                    if ((i == 0 && j == 0) || (i == this.div && j == this.div)) {
+                        // vertex at left bottom or right top corner
+                        vec3.subtract(a, a, vertex);
+                        vec3.subtract(b, b, vertex);
+                        vec3.cross(vNormal, a, b);
+                        vec3.normalize(vNormal, vNormal);
+                    } else {
+                        // vertex at right bottom or left top corner
+                        // Calculate normals of neighbor surfaces
+                        let neiSurfaceNormals = [];
+                        for (let k = 0; k < 2; k++) {
+                            vec3.subtract(a, neighbors[k], vertex);
+                            vec3.subtract(b, neighbors[k + 1], vertex);
+                            vec3.cross(crossProduct, a, b);
+                            neiSurfaceNormals.push(crossProduct);
+                        }
+
+                        // Sum all neighbor normals and normalize
+                        for (let k = 0; k < 2; k++)
+                            vec3.add(vNormal, vNormal, neiSurfaceNormals[k]);
+                        vec3.normalize(vNormal, vNormal);
+                    }
+                } else { // vertices at the edges
                     let neighbors = [];
                     for (let k = 0; k < 4; k++)
                         neighbors.push(vec3.create());
 
+                    // Get all neighbors according to location of the vertex
                     if (i == 0) {
-                        // vertices at left edge
-                        this.getVertex(neighbors[0], i, j - 1);
-                        this.getVertex(neighbors[1], i + 1, j - 1);
-                        this.getVertex(neighbors[2], i + 1, j);
-                        this.getVertex(neighbors[3], i, j + 1);
-                    } else if (j == 0) {
                         // vertices at bottom edge
-                        this.getVertex(neighbors[0], i + 1, j);
-                        this.getVertex(neighbors[1], i, j + 1);
-                        this.getVertex(neighbors[2], i - 1, j + 1);
-                        this.getVertex(neighbors[3], i - 1, j);
-                    } else if (i == this.div) {
-                        // vertices at right edge
                         this.getVertex(neighbors[0], i, j + 1);
-                        this.getVertex(neighbors[1], i - 1, j + 1);
-                        this.getVertex(neighbors[2], i - 1, j);
-                        this.getVertex(neighbors[3], i, j - 1);
-                    } else {
-                        // vertices at top edge
-                        this.getVertex(neighbors[0], i - 1, j);
-                        this.getVertex(neighbors[1], i, j - 1);
+                        this.getVertex(neighbors[1], i + 1, j);
                         this.getVertex(neighbors[2], i + 1, j - 1);
+                        this.getVertex(neighbors[3], i, j - 1);
+                    } else if (j == 0) {
+                        // vertices at left edge
+                        this.getVertex(neighbors[0], i - 1, j);
+                        this.getVertex(neighbors[1], i - 1, j + 1);
+                        this.getVertex(neighbors[2], i, j + 1);
                         this.getVertex(neighbors[3], i + 1, j);
+                    } else if (i == this.div) {
+                        // vertices at top edge
+                        this.getVertex(neighbors[0], i, j - 1);
+                        this.getVertex(neighbors[1], i - 1, j);
+                        this.getVertex(neighbors[2], i - 1, j + 1);
+                        this.getVertex(neighbors[3], i, j + 1);
+                    } else {
+                        // vertices at right edge
+                        this.getVertex(neighbors[0], i + 1, j);
+                        this.getVertex(neighbors[1], i + 1, j - 1);
+                        this.getVertex(neighbors[2], i, j - 1);
+                        this.getVertex(neighbors[3], i - 1, j);
                     }
 
                     let neiSurfaceNormals = [];
