@@ -4,7 +4,6 @@
  */
 
 
-
 /** Class implementing 3D terrain. */
 class Terrain {
     /**
@@ -35,6 +34,9 @@ class Terrain {
         this.generateTriangles();
         console.log("Terrain: Generated triangles");
 
+        this.setHeightsByPartition(200, 0.005);
+        console.log("Terrain: Set heights");
+
         this.generateLines();
         console.log("Terrain: Generated lines");
 
@@ -44,7 +46,6 @@ class Terrain {
             alert("OES_element_index_uint is unsupported by your browser and terrain generation cannot proceed.");
         }
     }
-
 
 
     //-------------------------------------------------------------------------------
@@ -62,7 +63,6 @@ class Terrain {
     }
 
 
-
     //-------------------------------------------------------------------------------
     /**
      * Return the x,y,z coordinates of a vertex at location (i,j)
@@ -76,7 +76,6 @@ class Terrain {
         v[1] = this.vBuffer[vid + 1];
         v[2] = this.vBuffer[vid + 2];
     }
-
 
 
     //-------------------------------------------------------------------------------
@@ -119,8 +118,8 @@ class Terrain {
         this.IndexEdgeBuffer.numItems = this.eBuffer.length;
 
         console.log("triangulatedPlane: loadBuffers");
+        //this.printBuffers();
     }
-
 
 
     //-------------------------------------------------------------------------------
@@ -144,7 +143,6 @@ class Terrain {
     }
 
 
-
     //-------------------------------------------------------------------------------
     /**
      * Render the triangle edges wireframe style
@@ -164,7 +162,6 @@ class Terrain {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.IndexEdgeBuffer);
         gl.drawElements(gl.LINES, this.IndexEdgeBuffer.numItems, gl.UNSIGNED_INT, 0);
     }
-
 
 
     //-------------------------------------------------------------------------------
@@ -191,17 +188,16 @@ class Terrain {
                 let vid = i * (this.div + 1) + j;
                 this.fBuffer.push(vid);
                 this.fBuffer.push(vid + 1);
-                this.fBuffer.push(vid + this.div + 1);
+                this.fBuffer.push(vid + (this.div + 1));
 
                 this.fBuffer.push(vid + 1);
-                this.fBuffer.push(vid + 1 + this.div + 1);
-                this.fBuffer.push(vid + this.div + 1);
+                this.fBuffer.push((vid + 1) + (this.div + 1));
+                this.fBuffer.push(vid + (this.div + 1));
             }
 
         this.numVertices = this.vBuffer.length / 3;
         this.numFaces = this.fBuffer.length / 3;
     }
-
 
 
     //-------------------------------------------------------------------------------
@@ -214,9 +210,46 @@ class Terrain {
      * @param {number} delta the amount to raise (and lower) the partitioned vertices
      */
     setHeightsByPartition(N, delta) {
+        let p = vec3.create();
+        let n = vec3.create();
+        let radian;
+        let vertex = vec3.create();
+        let vecPtoVertex = vec3.create();
 
+        for (let times = 0; times < N; times++) {
+            vec3.set(p, Math.random() - this.maxX, Math.random() - this.maxY, 0);
+            //console.log("p ", p[0], " ", p[1], " ", p[2]);
+
+            radian = (Math.random() * 360) * Math.PI / 180;
+            vec3.set(n, Math.cos(radian), Math.sin(radian), 0);
+            //console.log("n ", n[0], " ", n[1], " ", n[2]);
+
+            for (let i = 0; i <= this.div; i++)
+                for (let j = 0; j <= this.div; j++) {
+                    this.getVertex(vertex, i, j);
+
+                    vec3.subtract(vecPtoVertex, vertex, p);
+                    vertex[2] += (vec3.dot(vecPtoVertex, n) >= 0) ? (delta) : (-delta);
+
+                    this.setVertex(vertex, i, j);
+                }
+        }
+
+        this.getVertex(vertex, 0, 0);
+        let min = vertex[2];
+        for (let i = 0; i <= this.div; i++)
+            for (let j = 0; j <= this.div; j++) {
+                this.getVertex(vertex, i, j);
+                min = (vertex[2] < min) ? vertex[2] : min;
+            }
+        min = 0 - min;
+        for (let i = 0; i <= this.div; i++)
+            for (let j = 0; j <= this.div; j++) {
+                this.getVertex(vertex, i, j);
+                vertex[2] += min;
+                this.setVertex(vertex, i, j);
+            }
     }
-
 
 
     //-------------------------------------------------------------------------------
@@ -239,7 +272,6 @@ class Terrain {
         }
 
     }
-
 
 
     //-------------------------------------------------------------------------------
