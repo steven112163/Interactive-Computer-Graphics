@@ -37,6 +37,9 @@ class Terrain {
         this.setHeightsByPartition(200, 0.005);
         console.log("Terrain: Set heights");
 
+        this.setNormals();
+        console.log("Terrain: Set normals");
+
         this.generateLines();
         console.log("Terrain: Generated lines");
 
@@ -178,9 +181,9 @@ class Terrain {
                 this.vBuffer.push(this.minY + deltaY * i);
                 this.vBuffer.push(0);
 
+                /*this.nBuffer.push(0);
                 this.nBuffer.push(0);
-                this.nBuffer.push(0);
-                this.nBuffer.push(1);
+                this.nBuffer.push(1);*/
             }
 
         for (let i = 0; i < this.div; i++)
@@ -248,6 +251,122 @@ class Terrain {
                 this.getVertex(vertex, i, j);
                 vertex[2] += min;
                 this.setVertex(vertex, i, j);
+            }
+    }
+
+
+    //-------------------------------------------------------------------------------
+    /**
+     * Set normal vector to every vertex
+     */
+    setNormals() {
+        let vertex = vec3.create();
+        let vNormal = vec3.create();
+        let a = vec3.create();
+        let b = vec3.create();
+        let crossProduct = vec3.create();
+
+        for (let i = 0; i <= this.div; i++)
+            for (let j = 0; j <= this.div; j++) {
+                this.getVertex(vertex, i, j);
+                vec3.set(vNormal, 0, 0, 0);
+
+                if ((0 < i && i < this.div) && (0 < j && j < this.div)) {
+                    // vertices in the plane
+                    let neighbors = [];
+                    for (let k = 0; k < 6; k++)
+                        neighbors.push(vec3.create());
+                    this.getVertex(neighbors[0], i + 1, j);
+                    this.getVertex(neighbors[1], i, j + 1);
+                    this.getVertex(neighbors[2], i - 1, j + 1);
+                    this.getVertex(neighbors[3], i - 1, j);
+                    this.getVertex(neighbors[4], i, j - 1);
+                    this.getVertex(neighbors[5], i + 1, j - 1);
+
+                    let neiSurfaceNormals = [];
+                    for (let k = 0; k < 6; k++) {
+                        vec3.subtract(a, neighbors[k], vertex);
+                        vec3.subtract(b, neighbors[(k + 1) % 6], vertex);
+                        vec3.cross(crossProduct, a, b);
+                        neiSurfaceNormals.push(crossProduct);
+                    }
+
+                    for (let k = 0; k < 6; k++)
+                        vec3.add(vNormal, vNormal, neiSurfaceNormals[k]);
+                    vec3.normalize(vNormal, vNormal);
+                } else if ((i == 0 && j == 0) || (i == this.div && j == this.div) ||
+                    (i == 0 && j == this.div) || (i == this.div && j == 0)) {
+                    // vertices at four corners
+
+                    if (i == 0 && j == 0) {
+                        // vertex at the left bottom corner
+                        this.getVertex(a, i + 1, j);
+                        this.getVertex(b, i, j + 1);
+                    } else if (i == this.div && j == this.div) {
+                        // vertex at the right top corner
+                        this.getVertex(a, i - 1, j);
+                        this.getVertex(b, i, j - 1);
+                    } else if (i == 0 && j == this.div) {
+                        // vertex at the left top corner
+                        this.getVertex(a, i, j - 1);
+                        this.getVertex(b, i + 1, j);
+                    } else {
+                        // vertex at the right bottom corner
+                        this.getVertex(a, i, j + 1);
+                        this.getVertex(b, i - 1, j);
+                    }
+
+                    vec3.subtract(a, a, vertex);
+                    vec3.subtract(b, b, vertex);
+                    vec3.cross(vNormal, a, b);
+                    vec3.normalize(vNormal, vNormal);
+                } else {
+                    let neighbors = [];
+                    for (let k = 0; k < 4; k++)
+                        neighbors.push(vec3.create());
+
+                    if (i == 0) {
+                        // vertices at left edge
+                        this.getVertex(neighbors[0], i, j - 1);
+                        this.getVertex(neighbors[1], i + 1, j - 1);
+                        this.getVertex(neighbors[2], i + 1, j);
+                        this.getVertex(neighbors[3], i, j + 1);
+                    } else if (j == 0) {
+                        // vertices at bottom edge
+                        this.getVertex(neighbors[0], i + 1, j);
+                        this.getVertex(neighbors[1], i, j + 1);
+                        this.getVertex(neighbors[2], i - 1, j + 1);
+                        this.getVertex(neighbors[3], i - 1, j);
+                    } else if (i == this.div) {
+                        // vertices at right edge
+                        this.getVertex(neighbors[0], i, j + 1);
+                        this.getVertex(neighbors[1], i - 1, j + 1);
+                        this.getVertex(neighbors[2], i - 1, j);
+                        this.getVertex(neighbors[3], i, j - 1);
+                    } else {
+                        // vertices at top edge
+                        this.getVertex(neighbors[0], i - 1, j);
+                        this.getVertex(neighbors[1], i, j - 1);
+                        this.getVertex(neighbors[2], i + 1, j - 1);
+                        this.getVertex(neighbors[3], i + 1, j);
+                    }
+
+                    let neiSurfaceNormals = [];
+                    for (let k = 0; k < 3; k++) {
+                        vec3.subtract(a, neighbors[k], vertex);
+                        vec3.subtract(b, neighbors[k + 1], vertex);
+                        vec3.cross(crossProduct, a, b);
+                        neiSurfaceNormals.push(crossProduct);
+                    }
+
+                    for (let k = 0; k < 3; k++)
+                        vec3.add(vNormal, vNormal, neiSurfaceNormals[k]);
+                    vec3.normalize(vNormal, vNormal);
+                }
+
+                this.nBuffer.push(vNormal[0]);
+                this.nBuffer.push(vNormal[1]);
+                this.nBuffer.push(vNormal[2]);
             }
     }
 
