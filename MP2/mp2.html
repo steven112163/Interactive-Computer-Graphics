@@ -63,6 +63,7 @@
     uniform vec3 uKSpecular;
     uniform float uShininess;
     uniform int manualOrNot;
+    uniform int fogOn;
 
     varying vec3 vNormal;
     varying vec3 vPosition;
@@ -102,12 +103,16 @@
                         + (uDiffuseLightColor*uKDiffuse) * diffuseLightWeightning
                         + ((uSpecularLightColor*uKSpecular) * specularLightWeightning)), 1.0);
 
-        float fogCoord = (gl_FragCoord.z / gl_FragCoord.w);
-        vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
-        float fogDensity = 0.7;
-        float fogFactor = exp2(-fogDensity * fogDensity * fogCoord * fogCoord * 1.442695);
-        fogFactor = clamp(fogFactor, 0.0, 1.0);
-        gl_FragColor = mix(fogColor, fragColor, fogFactor);
+        // Perform fog phenomenon if fog switch is on
+        if (fogOn == 1) {
+            float fogCoord = (gl_FragCoord.z / gl_FragCoord.w);
+            vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
+            float fogDensity = 0.7;
+            float fogFactor = exp2(-fogDensity * fogDensity * fogCoord * fogCoord * 1.442695);
+            fogFactor = clamp(fogFactor, 0.0, 1.0);
+            gl_FragColor = mix(fogColor, fragColor, fogFactor);
+        } else
+            gl_FragColor = fragColor;
     }
 </script>
 
@@ -123,6 +128,11 @@
         <input type="radio" name="primitive" id="wireframe" value="wireframe"> Wireframe
         <input type="radio" name="primitive" id="polygon" value="polygon" checked> Polygon
         <input type="radio" name="primitive" id="wirepoly" value="wirepoly"> Polygon with Edges
+    </fieldset>
+    <fieldset>
+        <legend>Fog Switch</legend>
+        <input type="radio" name="fog" id="fogOn" value="fogOn" checked> On
+        <input type="radio" name="fog" id="fogOff" value="fogOff"> Off
     </fieldset>
 </form>
 </body>

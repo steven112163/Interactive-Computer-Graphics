@@ -39,6 +39,9 @@ var myTerrain;
 /** @global Whether color changes according to height or not */
 var manualOrNot;
 
+/** @global Whether fog is on */
+var fogOnOff;
+
 
 // View parameters
 /** @global Location of the camera in world coordinates */
@@ -75,7 +78,6 @@ var kEdgeBlack = [0.0, 0.0, 0.0];
 var kEdgeWhite = [1.0, 1.0, 1.0];
 
 
-
 //-------------------------------------------------------------------------
 /**
  * Sends Modelview matrix to shader
@@ -83,7 +85,6 @@ var kEdgeWhite = [1.0, 1.0, 1.0];
 function uploadModelViewMatrixToShader() {
     gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
 }
-
 
 
 //-------------------------------------------------------------------------
@@ -94,7 +95,6 @@ function uploadProjectionMatrixToShader() {
     gl.uniformMatrix4fv(shaderProgram.pMatrixUniform,
         false, pMatrix);
 }
-
 
 
 //-------------------------------------------------------------------------
@@ -109,7 +109,6 @@ function uploadNormalMatrixToShader() {
 }
 
 
-
 //----------------------------------------------------------------------------------
 /**
  * Pushes matrix onto modelview matrix stack
@@ -118,7 +117,6 @@ function mvPushMatrix() {
     let copy = mat4.clone(mvMatrix);
     mvMatrixStack.push(copy);
 }
-
 
 
 //----------------------------------------------------------------------------------
@@ -133,7 +131,6 @@ function mvPopMatrix() {
 }
 
 
-
 //----------------------------------------------------------------------------------
 /**
  * Sends projection/modelview matrices to shader
@@ -145,7 +142,6 @@ function setMatrixUniforms() {
 }
 
 
-
 //----------------------------------------------------------------------------------
 /**
  * Translates degrees to radians
@@ -155,7 +151,6 @@ function setMatrixUniforms() {
 function degToRad(degrees) {
     return degrees * Math.PI / 180;
 }
-
 
 
 //----------------------------------------------------------------------------------
@@ -184,7 +179,6 @@ function createGLContext(canvas) {
     }
     return context;
 }
-
 
 
 //----------------------------------------------------------------------------------
@@ -232,7 +226,6 @@ function loadShaderFromDOM(id) {
 }
 
 
-
 //----------------------------------------------------------------------------------
 /**
  * Setup the fragment and vertex shaders
@@ -272,8 +265,8 @@ function setupShaders() {
     shaderProgram.uniformAmbientMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKAmbient");
     shaderProgram.uniformDiffuseMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKDiffuse");
     shaderProgram.uniformSpecularMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKSpecular");
+    shaderProgram.fogUniform = gl.getUniformLocation(shaderProgram, "fogOn");
 }
-
 
 
 //-------------------------------------------------------------------------
@@ -292,7 +285,6 @@ function setMaterialUniforms(alpha, a, d, s) {
 }
 
 
-
 //-------------------------------------------------------------------------
 /**
  * Sends light information to the shader
@@ -309,7 +301,6 @@ function setLightUniforms(loc, a, d, s) {
 }
 
 
-
 //----------------------------------------------------------------------------------
 /**
  * Populate buffers with data
@@ -318,7 +309,6 @@ function setupBuffers() {
     myTerrain = new Terrain(64, -0.5, 0.5, -0.5, 0.5);
     myTerrain.loadBuffers();
 }
-
 
 
 //----------------------------------------------------------------------------------
@@ -354,6 +344,11 @@ function draw() {
     gl.uniform1f(shaderProgram.lHeightUniform, myTerrain.lowestHeight);
     gl.uniform1f(shaderProgram.hHeightUniform, myTerrain.highestHeight);
 
+    if (document.getElementById("fogOn").checked)
+        gl.uniform1i(shaderProgram.fogUniform, 1);
+    else
+        gl.uniform1i(shaderProgram.fogUniform, 0);
+
     if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked)) {
         gl.uniform1i(shaderProgram.manualUniform, 1);
         setMaterialUniforms(shininess, kAmbient, kTerrainDiffuse, kSpecular);
@@ -372,10 +367,7 @@ function draw() {
         myTerrain.drawEdges();
     }
     mvPopMatrix();
-
-
 }
-
 
 
 //----------------------------------------------------------------------------------
@@ -391,7 +383,6 @@ function startup() {
     gl.enable(gl.DEPTH_TEST);
     tick();
 }
-
 
 
 //----------------------------------------------------------------------------------
