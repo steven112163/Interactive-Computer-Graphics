@@ -1,6 +1,6 @@
 /**
  * @file A simple WebGL example drawing central Illinois style terrain
- * @author Eric Shaffer <shaffer1@illinois.edu>
+ * @author Yu-Hsun Yuan <yhyuan2@illinois.edu> <steven112163@gmail.com>
  */
 
 /** @global The WebGL context */
@@ -42,11 +42,11 @@ var manualOrNot;
 
 // View parameters
 /** @global Location of the camera in world coordinates */
-var eyePt = vec3.fromValues(0.0, 0.0, -1.1);
+var eyePt = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Direction of the view in world coordinates */
 var viewDir = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
-var up = vec3.fromValues(0.0, 1.0, 0.0);
+var up = vec3.fromValues(0.0, 10.0, 0.0);
 /** @global Location of a point along viewDir in world coordinates */
 var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
@@ -346,8 +346,9 @@ function draw() {
     mvPushMatrix();
     vec3.set(transformVec, 0.0, -0.25, -2.0);
     mat4.translate(mvMatrix, mvMatrix, transformVec);
-    mat4.rotateY(mvMatrix, mvMatrix, degToRad(viewRot));
+    //mat4.rotateY(mvMatrix, mvMatrix, degToRad(viewRot));
     mat4.rotateX(mvMatrix, mvMatrix, degToRad(-75));
+    //mat4.scale(mvMatrix, mvMatrix, [1.8, 1.8, 1.8]);
     setMatrixUniforms();
     setLightUniforms(lightPosition, lAmbient, lDiffuse, lSpecular);
     gl.uniform1f(shaderProgram.lHeightUniform, myTerrain.lowestHeight);
@@ -386,7 +387,7 @@ function startup() {
     gl = createGLContext(canvas);
     setupShaders();
     setupBuffers();
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     tick();
 }

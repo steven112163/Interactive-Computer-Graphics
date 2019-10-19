@@ -31,19 +31,19 @@
 
         float interval = (highestHeight - lowestHeight) / 8.0;
 
-        if (aVertexPosition[2] < (lowestHeight + interval))
+        if (aVertexPosition.z < (lowestHeight + interval))
             uKDiffuseManual = vec3(0.0 / 255.0, 0.0 / 255.0, 179.0 / 255.0);
-        else if ((lowestHeight + interval) <= aVertexPosition[2] && aVertexPosition[2] < (lowestHeight + 2.0*interval))
+        else if ((lowestHeight + interval) <= aVertexPosition.z && aVertexPosition.z < (lowestHeight + 2.0*interval))
             uKDiffuseManual = vec3(0.0 / 255.0, 102.0 / 255.0, 255.0 / 255.0);
-        else if ((lowestHeight + 2.0*interval) <= aVertexPosition[2] && aVertexPosition[2] < (lowestHeight + 3.0*interval))
+        else if ((lowestHeight + 2.0*interval) <= aVertexPosition.z && aVertexPosition.z < (lowestHeight + 3.0*interval))
             uKDiffuseManual = vec3(0.0 / 255.0, 153.0 / 255.0, 0.0 / 255.0);
-        else if ((lowestHeight + 3.0*interval) <= aVertexPosition[2] && aVertexPosition[2] < (lowestHeight + 4.0*interval))
+        else if ((lowestHeight + 3.0*interval) <= aVertexPosition.z && aVertexPosition.z < (lowestHeight + 4.0*interval))
             uKDiffuseManual = vec3(0.0 / 255.0, 255.0 / 255.0, 0.0 / 255.0);
-        else if ((lowestHeight + 4.0*interval) <= aVertexPosition[2] && aVertexPosition[2] < (lowestHeight + 5.0*interval))
+        else if ((lowestHeight + 4.0*interval) <= aVertexPosition.z && aVertexPosition.z < (lowestHeight + 5.0*interval))
             uKDiffuseManual = vec3(255.0 / 255.0, 255.0 / 255.0, 0.0 / 255.0);
-        else if ((lowestHeight + 5.0*interval) <= aVertexPosition[2] && aVertexPosition[2] < (lowestHeight + 6.0*interval))
+        else if ((lowestHeight + 5.0*interval) <= aVertexPosition.z && aVertexPosition.z < (lowestHeight + 6.0*interval))
             uKDiffuseManual = vec3(255.0 / 255.0, 153.0 / 255.0, 0.0 / 255.0);
-        else if ((lowestHeight + 6.0*interval) <= aVertexPosition[2] && aVertexPosition[2] < (lowestHeight + 7.0*interval))
+        else if ((lowestHeight + 6.0*interval) <= aVertexPosition.z && aVertexPosition.z < (lowestHeight + 7.0*interval))
             uKDiffuseManual = vec3(255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0);
         else
             uKDiffuseManual = vec3(204.0 / 255.0, 0.0 / 255.0, 204.0 / 255.0);
@@ -92,14 +92,22 @@
         float specularLightWeightning = pow(rdotv, uShininess);
 
         // Sum up all three reflection components and send to the fragment shader
+        vec4 fragColor;
         if (manualOrNot != 0)
-            gl_FragColor = vec4(((uAmbientLightColor*uKAmbient)
+            fragColor = vec4(((uAmbientLightColor*uKAmbient)
                         + (uDiffuseLightColor*uKDiffuseManual) * diffuseLightWeightning
                         + ((uSpecularLightColor*uKSpecular) * specularLightWeightning)), 1.0);
         else
-            gl_FragColor = vec4(((uAmbientLightColor*uKAmbient)
+            fragColor = vec4(((uAmbientLightColor*uKAmbient)
                         + (uDiffuseLightColor*uKDiffuse) * diffuseLightWeightning
                         + ((uSpecularLightColor*uKSpecular) * specularLightWeightning)), 1.0);
+
+        float fogCoord = (gl_FragCoord.z / gl_FragCoord.w);
+        vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
+        float fogDensity = 0.7;
+        float fogFactor = exp2(-fogDensity * fogDensity * fogCoord * fogCoord * 1.442695);
+        fogFactor = clamp(fogFactor, 0.0, 1.0);
+        gl_FragColor = mix(fogColor, fragColor, fogFactor);
     }
 </script>
 

@@ -37,7 +37,7 @@ class Terrain {
         this.generateTriangles();
         console.log("Terrain: Generated triangles");
 
-        this.setHeightsByPartition(200, 0.005);
+        this.setHeightsByPartition(100, 0.005);
         console.log("Terrain: Set heights");
 
         this.setNormals();
