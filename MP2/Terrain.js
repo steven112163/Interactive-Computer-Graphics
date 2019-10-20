@@ -1,8 +1,7 @@
 /**
  * @fileoverview Terrain - A simple 3D terrain using WebGL
- * @author Eric Shaffer
+ * @author Yu-Hsun Yuan <yhyuan2@illinois.edu> <steven112163@gmail.com>
  */
-
 
 /** Class implementing 3D terrain. */
 class Terrain {

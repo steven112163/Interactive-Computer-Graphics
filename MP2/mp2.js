@@ -3,6 +3,8 @@
  * @author Yu-Hsun Yuan <yhyuan2@illinois.edu> <steven112163@gmail.com>
  */
 
+const { mat4, mat3, vec3, quat } = glMatrix;
+
 /** @global The WebGL context */
 var gl;
 
@@ -25,7 +27,16 @@ var nMatrix = mat3.create();
 var mvMatrixStack = [];
 
 /** @global The angle of rotation around the y axis */
-var viewRot = 10;
+var viewRoll = 0.0;
+
+/** @global The angle of rotation around the x axis */
+var viewPitch = 0.0;
+
+/** @global The speed of flight */
+var speed = 0.001;
+
+/** @global Dictionary of user interactions */
+var currentlyPressedKeys = {};
 
 /** @global A glmatrix vector to use for transformations */
 var transformVec = vec3.create();
@@ -36,20 +47,18 @@ vec3.set(transformVec, 0.0, 0.0, -2.0);
 /** @global An object holding the geometry for a 3D terrain */
 var myTerrain;
 
-/** @global Whether color changes according to height or not */
-var manualOrNot;
-
-/** @global Whether fog is on */
-var fogOnOff;
-
 
 // View parameters
 /** @global Location of the camera in world coordinates */
-var eyePt = vec3.fromValues(0.0, 0.0, -1.0);
+var eyePt = vec3.fromValues(0.0, 0.0, 0.0);
+/** @global Temporary location of the camera in world coordinates */
+var tempEyePt = vec3.fromValues(0.0, 0.0, 0.0);
 /** @global Direction of the view in world coordinates */
 var viewDir = vec3.fromValues(0.0, 0.0, -1.0);
+/** @global Temporary Direction of the view in world coordinates */
+var tempViewDir = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
-var up = vec3.fromValues(0.0, 10.0, 0.0);
+var up = vec3.fromValues(0.0, 1.0, 0.0);
 /** @global Location of a point along viewDir in world coordinates */
 var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
@@ -327,18 +336,24 @@ function draw() {
         gl.viewportWidth / gl.viewportHeight,
         0.1, 200.0);
 
+    // Change view direction
+    let quaternion = quat.create();
+    quat.fromEuler(quaternion, viewPitch, viewRoll, 0.0);
+    vec3.transformQuat(tempViewDir, tempViewDir, quaternion);
+    // Move eye point forward
+    let distance = vec3.create();
+    vec3.scale(distance, tempViewDir, speed);
+    vec3.add(tempEyePt, tempEyePt, distance);
     // We want to look down -z, so create a lookat point in that direction    
-    vec3.add(viewPt, eyePt, viewDir);
+    vec3.add(viewPt, tempEyePt, tempViewDir);
     // Then generate the lookat matrix and initialize the MV matrix to that view
-    mat4.lookAt(mvMatrix, eyePt, viewPt, up);
+    mat4.lookAt(mvMatrix, tempEyePt, viewPt, up);
 
     //Draw Terrain
     mvPushMatrix();
     vec3.set(transformVec, 0.0, -0.25, -2.0);
     mat4.translate(mvMatrix, mvMatrix, transformVec);
-    //mat4.rotateY(mvMatrix, mvMatrix, degToRad(viewRot));
     mat4.rotateX(mvMatrix, mvMatrix, degToRad(-75));
-    //mat4.scale(mvMatrix, mvMatrix, [1.8, 1.8, 1.8]);
     setMatrixUniforms();
     setLightUniforms(lightPosition, lAmbient, lDiffuse, lSpecular);
     gl.uniform1f(shaderProgram.lHeightUniform, myTerrain.lowestHeight);
@@ -381,6 +396,8 @@ function startup() {
     setupBuffers();
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
+    document.onkeydown = handleKeyDown;
+    document.onkeyup = handleKeyUp;
     tick();
 }
 
@@ -391,5 +408,55 @@ function startup() {
  */
 function tick() {
     requestAnimFrame(tick);
+    handleKeys();
     draw();
+}
+
+
+//----------------------------------------------------------------------------------
+/**
+ * Handle user interaction
+ */
+function handleKeyDown(event) {
+    currentlyPressedKeys[event.key] = true;
+    event.preventDefault();
+}
+
+function handleKeyUp(event) {
+    currentlyPressedKeys[event.key] = false;
+    event.preventDefault();
+
+    if(!currentlyPressedKeys["ArrowRight"] && !currentlyPressedKeys["ArrowLeft"])
+        viewRoll = 0.0;
+
+    if(!currentlyPressedKeys["ArrowUp"] && !currentlyPressedKeys["ArrowDown"])
+        viewPitch = 0.0;
+}
+
+function handleKeys() {
+    if (currentlyPressedKeys["ArrowRight"])
+        viewRoll -= 0.1;
+
+    if (currentlyPressedKeys["ArrowLeft"])
+        viewRoll += 0.1;
+
+    if(currentlyPressedKeys["ArrowUp"])
+        viewPitch += 0.1;
+
+    if(currentlyPressedKeys["ArrowDown"])
+        viewPitch -= 0.1;
+
+    if(currentlyPressedKeys["+"])
+        speed += 0.001;
+
+    if(currentlyPressedKeys["-"])
+        speed -= 0.001;
+
+    if(currentlyPressedKeys["="]){
+        viewRoll = 0.0;
+        viewPitch = 0.0;
+        speed = 0.001;
+        tempViewDir = vec3.clone(viewDir);
+        tempEyePt = vec3.clone(eyePt);
+    }
 }
