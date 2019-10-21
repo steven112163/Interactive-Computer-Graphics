@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html lang="en">
 <head>
-    <title>Hello Terrain </title>
+    <title>Hello Terrain</title>
     <meta charset="utf-8">
 </head>
 
@@ -50,6 +50,7 @@
 
         gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
     }
+
 </script>
 
 <script id="shader-fs" type="x-shader/x-fragment">
@@ -107,13 +108,14 @@
         if (fogOn == 1) {
             float fogCoord = (gl_FragCoord.z / gl_FragCoord.w);
             vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
-            float fogDensity = 0.7;
+            float fogDensity = 0.5;
             float fogFactor = exp2(-fogDensity * fogDensity * fogCoord * fogCoord * 1.442695);
             fogFactor = clamp(fogFactor, 0.0, 1.0);
             gl_FragColor = mix(fogColor, fragColor, fogFactor);
         } else
             gl_FragColor = fragColor;
     }
+
 </script>
 
 <script src="gl-matrix.js"></script>
@@ -121,6 +123,7 @@
 <script src="Terrain.js"></script>
 <script src="mp2.js"></script>
 <body onload="startup();">
+<h1></h1>
 <canvas id="myGLCanvas" width="800" height="800"></canvas>
 <form id="input_form">
     <fieldset>

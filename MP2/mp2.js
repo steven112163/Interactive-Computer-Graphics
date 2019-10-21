@@ -3,7 +3,7 @@
  * @author Yu-Hsun Yuan <yhyuan2@illinois.edu> <steven112163@gmail.com>
  */
 
-const { mat4, mat3, vec3, quat } = glMatrix;
+const {mat4, mat3, vec3, quat} = glMatrix;
 
 /** @global The WebGL context */
 var gl;
@@ -26,14 +26,15 @@ var nMatrix = mat3.create();
 /** @global The matrix stack for hierarchical modeling */
 var mvMatrixStack = [];
 
-/** @global The angle of rotation around the y axis */
+/** @global The angle of rotation around the z axis */
 var viewRoll = 0.0;
-
-/** @global The angle of rotation around the x axis */
-var viewPitch = 0.0;
 
 /** @global The speed of flight */
 var speed = 0.001;
+
+/** @global Global quaternion */
+var quaternion = quat.create();
+quat.setAxisAngle(quaternion, [1, 0, 0], 0.0);
 
 /** @global Dictionary of user interactions */
 var currentlyPressedKeys = {};
@@ -59,12 +60,18 @@ var viewDir = vec3.fromValues(0.0, 0.0, -1.0);
 var tempViewDir = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
 var up = vec3.fromValues(0.0, 1.0, 0.0);
+/** @global Temporary up vector for view matrix creation, in world coordinates */
+var tempUp = vec3.fromValues(0.0, 1.0, 0.0);
+/** @global camera axis of x */
+var cameraX = vec3.fromValues(1.0, 0.0, 0.0);
+/** @global camera axis of y */
+var cameraY = vec3.fromValues(0.0, 1.0, 0.0);
 /** @global Location of a point along viewDir in world coordinates */
 var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [0, 3, 3];
+var lightPosition = vec3.fromValues(0, 3, 3);
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0, 0, 0];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -315,7 +322,7 @@ function setLightUniforms(loc, a, d, s) {
  * Populate buffers with data
  */
 function setupBuffers() {
-    myTerrain = new Terrain(64, -0.5, 0.5, -0.5, 0.5);
+    myTerrain = new Terrain(128, -1, 1, -1, 1);
     myTerrain.loadBuffers();
 }
 
@@ -325,7 +332,6 @@ function setupBuffers() {
  * Draw call that applies matrix transformations to model and draws model in frame
  */
 function draw() {
-    //console.log("function draw()")
     let transformVec = vec3.create();
 
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -337,8 +343,6 @@ function draw() {
         0.1, 200.0);
 
     // Change view direction
-    let quaternion = quat.create();
-    quat.fromEuler(quaternion, viewPitch, viewRoll, 0.0);
     vec3.transformQuat(tempViewDir, tempViewDir, quaternion);
     // Move eye point forward
     let distance = vec3.create();
@@ -347,7 +351,8 @@ function draw() {
     // We want to look down -z, so create a lookat point in that direction    
     vec3.add(viewPt, tempEyePt, tempViewDir);
     // Then generate the lookat matrix and initialize the MV matrix to that view
-    mat4.lookAt(mvMatrix, tempEyePt, viewPt, up);
+    mat4.lookAt(mvMatrix, tempEyePt, viewPt, tempUp);
+    //mat4.rotate(mvMatrix, mvMatrix, degToRad(viewRoll), tempViewDir);
 
     //Draw Terrain
     mvPushMatrix();
@@ -394,7 +399,7 @@ function startup() {
     gl = createGLContext(canvas);
     setupShaders();
     setupBuffers();
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clearColor(0.0, 204.0 / 255.0, 1.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     document.onkeydown = handleKeyDown;
     document.onkeyup = handleKeyUp;
@@ -426,37 +431,78 @@ function handleKeyUp(event) {
     currentlyPressedKeys[event.key] = false;
     event.preventDefault();
 
-    if(!currentlyPressedKeys["ArrowRight"] && !currentlyPressedKeys["ArrowLeft"])
-        viewRoll = 0.0;
+    if (!currentlyPressedKeys["ArrowRight"] && !currentlyPressedKeys["ArrowLeft"])
+        quat.setAxisAngle(quaternion, [0, 1, 0], 0.0);
 
-    if(!currentlyPressedKeys["ArrowUp"] && !currentlyPressedKeys["ArrowDown"])
-        viewPitch = 0.0;
+    if (!currentlyPressedKeys["ArrowUp"] && !currentlyPressedKeys["ArrowDown"])
+        quat.setAxisAngle(quaternion, [1, 0, 0], 0.0);
 }
 
 function handleKeys() {
-    if (currentlyPressedKeys["ArrowRight"])
-        viewRoll -= 0.1;
+    let workingQuaternion = quat.create();
 
-    if (currentlyPressedKeys["ArrowLeft"])
-        viewRoll += 0.1;
+    // Yaw
+    if (currentlyPressedKeys["e"] || currentlyPressedKeys["E"]) {
+        // Yaw to right
+        quat.setAxisAngle(workingQuaternion, cameraY, degToRad(-0.29));
+        quat.multiply(quaternion, workingQuaternion, quaternion);
+    }
+    if (currentlyPressedKeys["q"] || currentlyPressedKeys["Q"]) {
+        // Yaw to left
+        quat.setAxisAngle(workingQuaternion, cameraY, degToRad(0.29));
+        quat.multiply(quaternion, workingQuaternion, quaternion);
+    }
 
-    if(currentlyPressedKeys["ArrowUp"])
-        viewPitch += 0.1;
+    // Pitch
+    if (currentlyPressedKeys["ArrowUp"]) {
+        // Pitch up
+        quat.setAxisAngle(workingQuaternion, cameraX, degToRad(0.29));
 
-    if(currentlyPressedKeys["ArrowDown"])
-        viewPitch -= 0.1;
+        quat.multiply(quaternion, workingQuaternion, quaternion);
+    }
+    if (currentlyPressedKeys["ArrowDown"]) {
+        // Pitch down
+        quat.setAxisAngle(workingQuaternion, cameraX, degToRad(-0.29));
+        quat.multiply(quaternion, workingQuaternion, quaternion);
+    }
 
-    if(currentlyPressedKeys["+"])
+    // Roll
+    if (currentlyPressedKeys["ArrowRight"]) {
+        // Roll to right
+        vec3.rotateZ(tempUp, tempUp, [0, 0, 0], -0.13);
+        vec3.rotateZ(cameraX, cameraX, [0, 0, 0], -0.13);
+        vec3.rotateZ(cameraY, cameraY, [0, 0, 0], -0.13);
+        vec3.rotateZ(lightPosition, lightPosition, [0, 0, 0], 0.13);
+    }
+    if (currentlyPressedKeys["ArrowLeft"]) {
+        // Roll to left
+        vec3.rotateZ(tempUp, tempUp, [0, 0, 0], 0.13);
+        vec3.rotateZ(cameraX, cameraX, [0, 0, 0], 0.13);
+        vec3.rotateZ(cameraY, cameraY, [0, 0, 0], 0.13);
+        vec3.rotateZ(lightPosition, lightPosition, [0, 0, 0], -0.13);
+    }
+
+    quat.normalize(quaternion, quaternion);
+
+    // Speed
+    if (currentlyPressedKeys["+"]) {
+        // Speed up
         speed += 0.001;
-
-    if(currentlyPressedKeys["-"])
+    }
+    if (currentlyPressedKeys["-"]) {
+        // Speed down
         speed -= 0.001;
+    }
 
-    if(currentlyPressedKeys["="]){
+    // Reset
+    if (currentlyPressedKeys["="]) {
         viewRoll = 0.0;
-        viewPitch = 0.0;
         speed = 0.001;
-        tempViewDir = vec3.clone(viewDir);
-        tempEyePt = vec3.clone(eyePt);
+        vec3.copy(tempEyePt, eyePt);
+        vec3.copy(tempViewDir, viewDir);
+        vec3.copy(tempUp, up);
+        lightPosition = vec3.fromValues(0, 3, 3);
+        cameraX = vec3.fromValues(1, 0, 0);
+        cameraY = vec3.fromValues(0, 1, 0);
     }
 }

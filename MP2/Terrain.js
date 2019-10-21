@@ -36,7 +36,7 @@ class Terrain {
         this.generateTriangles();
         console.log("Terrain: Generated triangles");
 
-        this.setHeightsByPartition(100, 0.005);
+        this.setHeightsByPartition(400, 0.005);
         console.log("Terrain: Set heights");
 
         this.setNormals();
@@ -274,8 +274,8 @@ class Terrain {
                 min = (vertex[2] < min) ? vertex[2] : min;
             }
 
-        // Move the whole place so that the lowest vertex's z is 0
-        min = 0 - min;
+        // Move the whole place so that the lowest vertex's z is -0.25
+        min = -0.25 - min;
         for (let i = 0; i <= this.div; i++)
             for (let j = 0; j <= this.div; j++) {
                 this.getVertex(vertex, i, j);
