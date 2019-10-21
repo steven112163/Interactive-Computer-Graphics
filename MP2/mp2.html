@@ -3,6 +3,11 @@
 <head>
     <title>Hello Terrain</title>
     <meta charset="utf-8">
+    <style>
+        h1 {text-align: center;}
+        h2 {text-align: center;}
+        p {text-align: center;}
+    </style>
 </head>
 
 
@@ -50,6 +55,8 @@
 
         gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
     }
+
+
 
 </script>
 
@@ -116,15 +123,34 @@
             gl_FragColor = fragColor;
     }
 
+
+
 </script>
 
 <script src="gl-matrix.js"></script>
 <script src="webgl-utils.js"></script>
 <script src="Terrain.js"></script>
 <script src="mp2.js"></script>
+
 <body onload="startup();">
-<h1></h1>
-<canvas id="myGLCanvas" width="800" height="800"></canvas>
+<div style="position: relative">
+    <canvas id="myGLCanvas" width="800" height="800"></canvas>
+    <div style="position: absolute; top: 200px; left: 1000px;">
+        <h1>Controls</h1>
+        <p>This is a tutorial tells you how to control the plane</p>
+        <h2>Direction</h2>
+        <ul>
+            <li>Arrow up(down): Make the plane pitch up(down).</li>
+            <li>Arrow right(left): Make the plane roll to its right(left).</li>
+            <li>Q/q(E/e): Make the plane yaw to its right(left).</li>
+        </ul>
+        <h2>Speed</h2>
+        <p>+(-): Increase(decrease) the plane's speed.</p>
+        <h2>Reset</h2>
+        <p>=: Reset the plane to its original location.</p>
+    </div>
+</div>
+
 <form id="input_form">
     <fieldset>
         <legend>Rendering Parameters</legend>
