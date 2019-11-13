@@ -30,6 +30,9 @@ var mvMatrixStack = [];
 /** @global An object holding the geometry for a 3D mesh */
 var myMesh;
 
+/** @global A texture cube map */
+var texture;
+
 
 // View parameters
 /** @global Location of the camera in world coordinates */
@@ -327,6 +330,69 @@ function setupMesh(filename) {
 
 //----------------------------------------------------------------------------------
 /**
+ * Setup cube map
+ */
+function setupCubeMap() {
+    texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+    //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    let faceInfos = [
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+            url: 'images/pos-x.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+            url: 'images/neg-x.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+            url: 'images/pos-y.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+            url: 'images/neg-y.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+            url: 'images/pos-z.jpg',
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+            url: 'images/neg-z.jpg',
+        },
+    ];
+
+    let level = 0;
+    let internalFormat = gl.RGBA;
+    let width = 2048;
+    let height = 2048;
+    let border = 0;
+    let format = gl.RGBA;
+    let type = gl.UNSIGNED_BYTE;
+    faceInfos.forEach((faceInfo) => {
+        let {target, url} = faceInfo;
+
+        // setup each face so it's immediately renderable
+        gl.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
+
+        // Asynchronously load an image
+        let image = new Image();
+        image.src = url;
+        // Now that the image has loaded make copy it to the texture.
+        image.onload = function () {
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.texImage2D(target, level, internalFormat, format, type, image);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+            console.log(url + " loaded");
+        };
+    });
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+}
+
+
+//----------------------------------------------------------------------------------
+/**
  * Draw call that applies matrix transformations to model and draws model in frame
  */
 function draw() {
@@ -439,6 +505,7 @@ function startup() {
     gl = createGLContext(canvas);
     setupShaders();
     setupMesh("teapot_0.obj");
+    setupCubeMap();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     document.onkeydown = handleKeyDown;

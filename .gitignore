@@ -1,9 +1,6 @@
-*/
-*.pdf
-*.jpg
-*.txt
-*.PNG
-*.zip
+*
 !MP1/
 !MP2/
 !MP3/
+!MP3/images/
+!MP3/images/*
