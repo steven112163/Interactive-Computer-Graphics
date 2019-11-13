@@ -3,5 +3,7 @@
 *.jpg
 *.txt
 *.PNG
+*.zip
 !MP1/
 !MP2/
+!MP3/
