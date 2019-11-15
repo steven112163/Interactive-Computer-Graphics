@@ -118,10 +118,18 @@
                             + (uDiffuseLightColor*uKDiffuse) * diffuseLightWeightning
                             + ((uSpecularLightColor*uKSpecular) * specularLightWeightning)), 1.0);
         } else if (type == 1) { // Reflection
-            // Calculate reflect vector (r)
             vec3 eyeToSurfaceDir = normalize(vWorldPosition - worldEye);
+
+            // Calculate reflect vector (r)
             vec3 R = reflect(-eyeToSurfaceDir, vWorldNormal);
             gl_FragColor = textureCube(cubeMap, R);
+        } else {
+            vec3 eyeToSurfaceDir = normalize(vWorldPosition - worldEye);
+
+            // Calculate refract vector (t)
+            vec3 T = refract(eyeToSurfaceDir, vWorldNormal, 1.00 / 1.52);
+            vec4 refractColor = textureCube(cubeMap, T);
+            gl_FragColor = mix(refractColor, vec4(1.0, 1.0, 1.0, 1.0), 0.3);
         }
     }
 </script>
