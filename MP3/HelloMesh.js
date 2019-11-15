@@ -94,6 +94,7 @@ var kEdgeWhite = [1.0, 1.0, 1.0];
 
 // Model parameters
 var eulerY = 0;
+var objectY = 0;
 var eyeDistance = 1;
 
 
@@ -278,11 +279,11 @@ function setupCubeMap() {
         },
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-            url: 'images/pos-y.jpg',
+            url: 'images/neg-y.jpg',
         },
         {
             target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
-            url: 'images/neg-y.jpg',
+            url: 'images/pos-y.jpg',
         },
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
@@ -318,6 +319,7 @@ function setupCubeMap() {
             console.log(url + " loaded");
         };
     });
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 }
 
@@ -339,6 +341,7 @@ function tick() {
  */
 function animate() {
     //console.log(eulerX, " ", eulerY, " ", eulerZ);
+    document.getElementById("oY").value = objectY;
     document.getElementById("eY").value = eulerY;
     document.getElementById("eZ").value = eyePt[2];
 }
@@ -422,12 +425,15 @@ function drawObjects() {
         max = maxXYZ[2] - minXYZ[2];
     mat4.scale(mvMatrix, mvMatrix, [0.5 / max, 0.5 / max, 0.5 / max]);
 
+    // Rotate box
+    mat4.rotateY(mvMatrix, mvMatrix, degToRad(objectY));
+
     // Translate box
     mat4.translate(mvMatrix, mvMatrix, [-(maxXYZ[0] + minXYZ[0]) / 2,
         -(maxXYZ[1] + minXYZ[1]) / 2,
         -(maxXYZ[2] + minXYZ[2]) / 2]);
 
-    //mat4.rotateY(mvMatrix, mvMatrix, degToRad(eulerY));
+    setWorldUniforms();
     mat4.multiply(mvMatrix, vMatrix, mvMatrix);
     setMatrixUniforms();
     setLightUniforms(lightPosition, lAmbient, lDiffuse, lSpecular);
@@ -462,9 +468,11 @@ function setupObjShaders() {
     objectShaderProgram.vertexNormalAttribute = gl.getAttribLocation(objectShaderProgram, "aVertexNormal");
     gl.enableVertexAttribArray(objectShaderProgram.vertexNormalAttribute);
 
+    objectShaderProgram.mMatrixUniform = gl.getUniformLocation(objectShaderProgram, "uMMatrix");
     objectShaderProgram.mvMatrixUniform = gl.getUniformLocation(objectShaderProgram, "uMVMatrix");
     objectShaderProgram.pMatrixUniform = gl.getUniformLocation(objectShaderProgram, "uPMatrix");
     objectShaderProgram.nMatrixUniform = gl.getUniformLocation(objectShaderProgram, "uNMatrix");
+    objectShaderProgram.wNMatrixUniform = gl.getUniformLocation(objectShaderProgram, "uWNMatrix");
     objectShaderProgram.uniformLightPositionLoc = gl.getUniformLocation(objectShaderProgram, "uLightPosition");
     objectShaderProgram.uniformAmbientLightColorLoc = gl.getUniformLocation(objectShaderProgram, "uAmbientLightColor");
     objectShaderProgram.uniformDiffuseLightColorLoc = gl.getUniformLocation(objectShaderProgram, "uDiffuseLightColor");
@@ -473,6 +481,19 @@ function setupObjShaders() {
     objectShaderProgram.uniformAmbientMaterialColorLoc = gl.getUniformLocation(objectShaderProgram, "uKAmbient");
     objectShaderProgram.uniformDiffuseMaterialColorLoc = gl.getUniformLocation(objectShaderProgram, "uKDiffuse");
     objectShaderProgram.uniformSpecularMaterialColorLoc = gl.getUniformLocation(objectShaderProgram, "uKSpecular");
+
+    objectShaderProgram.worldEyeUniform = gl.getUniformLocation(objectShaderProgram, "worldEye");
+
+    objectShaderProgram.cubeMapUniform = gl.getUniformLocation(objectShaderProgram, "cubeMap");
+    gl.uniform1i(objectShaderProgram.cubeMapUniform, 0);
+
+    objectShaderProgram.typeUniform = gl.getUniformLocation(objectShaderProgram, "type");
+    if (document.getElementById("Phong").checked)
+        gl.uniform1i(objectShaderProgram.typeUniform, 0);
+    else if (document.getElementById("Reflection").checked)
+        gl.uniform1i(objectShaderProgram.typeUniform, 1);
+    else
+        gl.uniform1i(objectShaderProgram.typeUniform, 2);
 }
 
 
@@ -603,6 +624,47 @@ function setupSkyShaders() {
 
 //----------------------------------------------------------------------------------
 /**
+ * Sends eye position, Model matrix and  to shader
+ */
+function setWorldUniforms() {
+    uploadEyePositionToShader();
+    uploadModelMatrixToShader();
+    uploadWorldNormalToShader();
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Sends eye position to shader
+ */
+function uploadEyePositionToShader() {
+    gl.uniform3fv(objectShaderProgram.worldEyeUniform, eyePt);
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Sends Model matrix to shader
+ */
+function uploadModelMatrixToShader() {
+    gl.uniformMatrix4fv(objectShaderProgram.mMatrixUniform, false, mvMatrix);
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Generates and sends the normal matrix to the shader
+ */
+function uploadWorldNormalToShader() {
+    mat3.fromMat4(nMatrix, mvMatrix);
+    mat3.invert(nMatrix, nMatrix);
+    mat3.transpose(nMatrix, nMatrix);
+    gl.uniformMatrix3fv(objectShaderProgram.wNMatrixUniform, false, nMatrix);
+}
+
+
+//----------------------------------------------------------------------------------
+/**
  * Sends projection/modelview matrices to shader
  */
 function setMatrixUniforms() {
@@ -627,8 +689,8 @@ function uploadModelViewMatrixToShader() {
  */
 function uploadNormalMatrixToShader() {
     mat3.fromMat4(nMatrix, mvMatrix);
-    mat3.transpose(nMatrix, nMatrix);
     mat3.invert(nMatrix, nMatrix);
+    mat3.transpose(nMatrix, nMatrix);
     gl.uniformMatrix3fv(objectShaderProgram.nMatrixUniform, false, nMatrix);
 }
 
@@ -638,8 +700,7 @@ function uploadNormalMatrixToShader() {
  * Sends projection matrix to shader
  */
 function uploadProjectionMatrixToShader() {
-    gl.uniformMatrix4fv(objectShaderProgram.pMatrixUniform,
-        false, pMatrix);
+    gl.uniformMatrix4fv(objectShaderProgram.pMatrixUniform, false, pMatrix);
 }
 
 
@@ -694,11 +755,13 @@ var currentlyPressedKeys = {};
 function handleKeyDown(event) {
     //console.log("Key down ", event.key, " code ", event.code);
     currentlyPressedKeys[event.key] = true;
-    if (currentlyPressedKeys["a"]) {
+    if (currentlyPressedKeys["ArrowLeft"]) {
         // key A
+        event.preventDefault();
         eulerY -= 1;
-    } else if (currentlyPressedKeys["d"]) {
+    } else if (currentlyPressedKeys["ArrowRight"]) {
         // key D
+        event.preventDefault();
         eulerY += 1;
     }
 
@@ -707,9 +770,19 @@ function handleKeyDown(event) {
         event.preventDefault();
         eyeDistance += 0.01;
     } else if (currentlyPressedKeys["ArrowDown"]) {
-        event.preventDefault();
         // Down cursor key
+        event.preventDefault();
         eyeDistance -= 0.01;
+    }
+
+    if (currentlyPressedKeys["a"]) {
+        // Right cursor key
+        event.preventDefault();
+        objectY -= 1;
+    } else if (currentlyPressedKeys["d"]) {
+        // Left cursor key
+        event.preventDefault();
+        objectY += 1;
     }
 
     eyePt = vec3.fromValues(eyeDistance*Math.sin(degToRad(eulerY)), 0.0, eyeDistance*Math.cos(degToRad(eulerY)));
