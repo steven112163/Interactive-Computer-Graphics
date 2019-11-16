@@ -267,7 +267,7 @@ function asyncGetFile(url) {
 function setupCubeMap() {
     texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     let faceInfos = [
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -279,11 +279,11 @@ function setupCubeMap() {
         },
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-            url: 'images/neg-y.jpg',
+            url: 'images/pos-y.jpg',
         },
         {
             target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
-            url: 'images/pos-y.jpg',
+            url: 'images/neg-y.jpg',
         },
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
@@ -513,37 +513,37 @@ function setupSkybox() {
         max = maxXYZ[2] - minXYZ[2];
     let distance = max / 2.0 * 3.0;
 
-    vBuffer = [distance, -distance, -distance,
-        distance, -distance, distance,
-        -distance, -distance, distance,
+    vBuffer = [distance, -distance, distance,
+        distance, -distance, -distance,
         -distance, -distance, -distance,
-        distance, distance, -distance,
+        -distance, -distance, distance,
         distance, distance, distance,
-        -distance, distance, distance,
-        -distance, distance, -distance];
+        distance, distance, -distance,
+        -distance, distance, -distance,
+        -distance, distance, distance];
 
     let root3 = 1.0 / Math.sqrt(3);
-    nBuffer = [-root3, root3, root3,
-        -root3, root3, -root3,
-        root3, root3, -root3,
-        root3, root3, root3,
-        -root3, -root3, root3,
-        -root3, -root3, -root3,
+    nBuffer = [root3, -root3, root3,
         root3, -root3, -root3,
-        root3, -root3, root3];
+        -root3, -root3, -root3,
+        -root3, -root3, root3,
+        root3, root3, root3,
+        root3, root3, -root3,
+        -root3, root3, -root3,
+        -root3, root3, root3];
 
     fBuffer = [0, 2, 3,
         0, 1, 2,
-        0, 7, 3,
-        0, 4, 7,
-        0, 1, 4,
-        1, 5, 4,
-        1, 2, 5,
-        2, 6, 5,
-        2, 3, 6,
-        3, 7, 6,
-        4, 6, 7,
-        4, 5, 6];
+        0, 3, 7,
+        0, 7, 4,
+        0, 4, 1,
+        1, 4, 5,
+        1, 5, 2,
+        2, 5, 6,
+        2, 6, 3,
+        3, 6, 7,
+        4, 7, 6,
+        4, 6, 5];
 
     loadSkyBox();
 }
