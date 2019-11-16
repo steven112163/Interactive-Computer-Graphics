@@ -140,7 +140,7 @@
     }
 </script>
 
-<script src="gl-matrix-min.js"></script>
+<script src="gl-matrix.js"></script>
 <script src="webgl-utils.js"></script>
 <script src="TriMesh.js"></script>
 <script src="HelloMesh.js"></script>
@@ -161,8 +161,12 @@
     </fieldset>
     <fieldset>
         <legend>Mesh Pose and Camera Position</legend>
+        <emph>Object X:</emph>
+        <input type="number" id="oX" value="0"> Keys W and S <br><br>
         <emph>Object Y:</emph>
         <input type="number" id="oY" value="0"> Keys A and D <br><br>
+        <emph>Object Z:</emph>
+        <input type="number" id="oZ" value="0"> Keys Q and E <br><br>
         <emph>Eye euler Y:</emph>
         <input type="number" id="eY" value="0"> Keys ArrowRight and ArrowLeft <br><br>
         <emph>Eye Z position:</emph>

@@ -1,6 +1,15 @@
 *
 !MP1/
+!MP1/*
+MP1/*.pdf
+MP1/*.zip
+MP1/*.txt
+MP1/*.png
 !MP2/
+!MP2/*
+MP2/*.zip
 !MP3/
+!MP3/*
+MP3/*.zip
 !MP3/images/
 !MP3/images/*
