@@ -121,6 +121,10 @@ function startup() {
     gl.enable(gl.DEPTH_TEST);
     document.onkeydown = handleKeyDown;
     document.onkeyup = handleKeyUp;
+    canvas.onmousedown = mouseDown;
+    canvas.onmouseup = mouseUp;
+    canvas.onmouseout = mouseUp;
+    canvas.onmousemove = mouseMove;
     tick();
 }
 
@@ -760,12 +764,11 @@ function degToRad(degrees) {
 
 
 //----------------------------------------------------------------------------------
-//Code to handle user interaction
+//Code to handle user interaction of keyboard
 var currentlyPressedKeys = {};
 
 
 function handleKeyDown(event) {
-    //console.log("Key down ", event.key, " code ", event.code);
     currentlyPressedKeys[event.key] = true;
 
     // Orbit eye
@@ -796,11 +799,11 @@ function handleKeyDown(event) {
     if (currentlyPressedKeys["a"] || currentlyPressedKeys["A"]) {
         // key A
         event.preventDefault();
-        objectY -= 1;
+        objectY -= 2;
     } else if (currentlyPressedKeys["d"] || currentlyPressedKeys["D"]) {
         // key D
         event.preventDefault();
-        objectY += 1;
+        objectY += 2;
     }
     objectY = (objectY + 360) % 360;
 
@@ -808,16 +811,16 @@ function handleKeyDown(event) {
     if (currentlyPressedKeys["w"] || currentlyPressedKeys["W"]) {
         // key W
         event.preventDefault();
-        objectX -= 1;
+        objectX -= 2;
     } else if (currentlyPressedKeys["s"] || currentlyPressedKeys["S"]) {
         // key S
         event.preventDefault();
-        objectX += 1;
+        objectX += 2;
     }
     objectX = (objectX + 360) % 360;
 
-    if (eyeDistance < 0.1)
-        eyeDistance = 0.1;
+    if (eyeDistance < 0.3)
+        eyeDistance = 0.3;
 
     eyePt = vec3.fromValues(eyeDistance * Math.sin(degToRad(eulerY)), 0.0, eyeDistance * Math.cos(degToRad(eulerY)));
     viewDir = vec3.fromValues(-Math.sin(degToRad(eulerY)), 0.0, -Math.cos(degToRad(eulerY)));
@@ -825,6 +828,34 @@ function handleKeyDown(event) {
 
 
 function handleKeyUp(event) {
-    //console.log("Key up ", event.key, " code ", event.code);
     currentlyPressedKeys[event.key] = false;
+}
+
+
+//----------------------------------------------------------------------------------
+//Code to handle user interaction of mouse
+var drag = false;
+var old_x, old_y;
+
+function mouseDown(event) {
+    event.preventDefault();
+    drag = true;
+    old_x = event.pageX;
+    old_y = event.pageY;
+}
+
+function mouseUp(event) {
+    event.preventDefault();
+    drag = false;
+};
+
+function mouseMove(event) {
+    if (!drag) return;
+    event.preventDefault();
+    objectX += Math.round((event.pageY - old_y) / canvas.height * 360);
+    objectY += Math.round((event.pageX - old_x) / canvas.width * 360);
+    objectX = (objectX + 360) % 360;
+    objectY = (objectY + 360) % 360;
+    old_x = event.pageX;
+    old_y = event.pageY;
 }
