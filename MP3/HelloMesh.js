@@ -3,7 +3,7 @@
  * @author Yu-Hsun Yuan <steven112163@gmail.com> <yhyuan2@illinois.edu>
  */
 
-const {mat4, mat3, vec3, quat} = glMatrix;
+const {mat4, mat3, vec3} = glMatrix;
 
 /** @global The WebGL context */
 var gl;
@@ -59,18 +59,18 @@ var faceBuffer;
 /** @global Check whether sky box is set */
 var skySetOrNot = false;
 
-/** @global Global quaternion */
-var quaternion = quat.create();
-quat.setAxisAngle(quaternion, [1, 0, 0], 0.0);
+/** @global Object degree of x */
+var objectX = 0;
 
-/** @global Object axis of x */
-var objectX = vec3.fromValues(1.0, 0.0, 0.0);
+/** @global Object degree of y */
+var objectY = 0;
 
-/** @global Object axis of y */
-var objectY = vec3.fromValues(0.0, 1.0, 0.0);
+/** @global Camera degree of y */
+var eulerY = 0;
 
-/** @global Object axis of z */
-var objectZ = vec3.fromValues(0.0, 0.0, 1.0);
+/** @global Camera distance from origin*/
+var eyeDistance = 1;
+
 
 // View parameters
 /** @global Location of the camera in world coordinates */
@@ -105,11 +105,6 @@ var shininess = 100;
 var kEdgeBlack = [0.0, 0.0, 0.0];
 /** @global Edge color for wireframe rendering */
 var kEdgeWhite = [1.0, 1.0, 1.0];
-
-
-// Model parameters
-var eulerY = 0;
-var eyeDistance = 1;
 
 
 //----------------------------------------------------------------------------------
@@ -280,7 +275,6 @@ function asyncGetFile(url) {
 function setupCubeMap() {
     texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-    //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     let faceInfos = [
         {
             target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -353,10 +347,8 @@ function tick() {
  * Update any model transformations
  */
 function animate() {
-    //console.log(eulerX, " ", eulerY, " ", eulerZ);
-    /*document.getElementById("oX").value = objectX;
+    document.getElementById("oX").value = objectX;
     document.getElementById("oY").value = objectY;
-    document.getElementById("oZ").value = objectZ;*/
     document.getElementById("eY").value = eulerY;
     document.getElementById("eZ").value = eyePt[2];
 }
@@ -389,6 +381,8 @@ function draw() {
     mvPushMatrix();
     drawObjects();
     mvPopMatrix();
+
+    // Draw sky box
     mvPushMatrix();
     if (!skySetOrNot) {
         skySetOrNot = true;
@@ -441,12 +435,8 @@ function drawObjects() {
     mat4.scale(mvMatrix, mvMatrix, [0.5 / max, 0.5 / max, 0.5 / max]);
 
     // Rotate box
-    /*mat4.rotateY(mvMatrix, mvMatrix, degToRad(objectY));
+    mat4.rotateY(mvMatrix, mvMatrix, degToRad(objectY));
     mat4.rotateX(mvMatrix, mvMatrix, degToRad(objectX));
-    mat4.rotateZ(mvMatrix, mvMatrix, degToRad(objectZ));*/
-    let rMatrix = mat4.create();
-    mat4.fromQuat(rMatrix, quaternion);
-    mat4.multiply(mvMatrix, mvMatrix, rMatrix);
 
     // Translate box
     mat4.translate(mvMatrix, mvMatrix, [-(maxXYZ[0] + minXYZ[0]) / 2,
@@ -508,6 +498,7 @@ function setupObjShaders() {
     gl.uniform1i(objectShaderProgram.cubeMapUniform, 0);
 
     objectShaderProgram.typeUniform = gl.getUniformLocation(objectShaderProgram, "type");
+    // Phong or Reflection or Refraction
     if (document.getElementById("Phong").checked)
         gl.uniform1i(objectShaderProgram.typeUniform, 0);
     else if (document.getElementById("Reflection").checked)
@@ -526,6 +517,7 @@ function setupSkybox() {
     let minXYZ = [3], maxXYZ = [3];
     myMesh.getAABB(minXYZ, maxXYZ);
 
+    // Calculate box distance from origin
     let max = maxXYZ[0] - minXYZ[0];
     if (max < maxXYZ[1] - minXYZ[1])
         max = maxXYZ[1] - minXYZ[1];
@@ -644,7 +636,7 @@ function setupSkyShaders() {
 
 //----------------------------------------------------------------------------------
 /**
- * Sends eye position, Model matrix and  to shader
+ * Sends eye position, Model matrix and normal matrix to shader
  */
 function setWorldUniforms() {
     uploadEyePositionToShader();
@@ -800,79 +792,29 @@ function handleKeyDown(event) {
         eyeDistance -= 0.01;
     }
 
-    let workingQuaternion = quat.create();
-
     // Yaw
     if (currentlyPressedKeys["a"] || currentlyPressedKeys["A"]) {
         // key A
         event.preventDefault();
-        /*objectY -= 1;
-        if (objectY == 90 || objectY == 270)
-            objectY -= 1;*/
-        quat.setAxisAngle(workingQuaternion, objectY, degToRad(-1));
-        vec3.transformQuat(objectX, objectX, workingQuaternion);
-        vec3.transformQuat(objectZ, objectZ, workingQuaternion);
+        objectY -= 1;
     } else if (currentlyPressedKeys["d"] || currentlyPressedKeys["D"]) {
         // key D
         event.preventDefault();
-        /*objectY += 1;
-        if (objectY == 90 || objectY == 270)
-            objectY += 1;*/
-        quat.setAxisAngle(workingQuaternion, objectY, degToRad(1));
-        vec3.transformQuat(objectX, objectX, workingQuaternion);
-        vec3.transformQuat(objectZ, objectZ, workingQuaternion);
+        objectY += 1;
     }
-    //objectY = (objectY + 360) % 360;
-    quat.multiply(quaternion, workingQuaternion, quaternion);
-    quat.normalize(quaternion, quaternion);
+    objectY = (objectY + 360) % 360;
 
     // Pitch
     if (currentlyPressedKeys["w"] || currentlyPressedKeys["W"]) {
         // key W
         event.preventDefault();
-        /*objectX -= 1;
-        if (objectX == 90 || objectX == 270)
-            objectX -= 1;*/
-        quat.setAxisAngle(workingQuaternion, objectX, degToRad(-1));
-        vec3.transformQuat(objectY, objectY, workingQuaternion);
-        vec3.transformQuat(objectZ, objectZ, workingQuaternion);
+        objectX -= 1;
     } else if (currentlyPressedKeys["s"] || currentlyPressedKeys["S"]) {
         // key S
         event.preventDefault();
-        /*objectX += 1;
-        if (objectX == 90 || objectX == 270)
-            objectX += 1;*/
-        quat.setAxisAngle(workingQuaternion, objectX, degToRad(1));
-        vec3.transformQuat(objectY, objectY, workingQuaternion);
-        vec3.transformQuat(objectZ, objectZ, workingQuaternion);
+        objectX += 1;
     }
-    //objectX = (objectX + 360) % 360;
-    quat.multiply(quaternion, workingQuaternion, quaternion);
-    quat.normalize(quaternion, quaternion);
-
-    // Roll
-    if (currentlyPressedKeys["q"] || currentlyPressedKeys["Q"]) {
-        // key Q
-        event.preventDefault();
-        /*objectZ -= 1;
-        if (objectZ == 90 || objectZ == 270)
-            objectZ -= 1;*/
-        quat.setAxisAngle(workingQuaternion, objectZ, degToRad(-1));
-        vec3.transformQuat(objectX, objectX, workingQuaternion);
-        vec3.transformQuat(objectY, objectY, workingQuaternion);
-    } else if (currentlyPressedKeys["e"] || currentlyPressedKeys["E"]) {
-        // key E
-        event.preventDefault();
-        /*objectZ += 1;
-        if (objectZ == 90 || objectZ == 270)
-            objectZ += 1;*/
-        quat.setAxisAngle(workingQuaternion, objectZ, degToRad(1));
-        vec3.transformQuat(objectX, objectX, workingQuaternion);
-        vec3.transformQuat(objectY, objectY, workingQuaternion);
-    }
-    //objectZ = (objectZ + 360) % 360;
-    quat.multiply(quaternion, workingQuaternion, quaternion);
-    quat.normalize(quaternion, quaternion);
+    objectX = (objectX + 360) % 360;
 
     if (eyeDistance < 0.1)
         eyeDistance = 0.1;
