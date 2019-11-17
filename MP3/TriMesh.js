@@ -100,8 +100,6 @@ class TriMesh {
      * @param {string} fileText text of an OBJ file
      */
     loadFromOBJ(fileText) {
-
-        //Your code here
         let lines = fileText.split('\n');
         for (let i = 0; i < lines.length; i++) {
             let elements = lines[i].split(/\b\s+(?!$)/);
@@ -117,7 +115,6 @@ class TriMesh {
                 this.numFaces++;
             }
         }
-        //----------------
         console.log("TriMesh: Loaded ", this.numFaces, " triangles.");
         console.log("TriMesh: Loaded ", this.numVertices, " vertices.");
 
@@ -180,6 +177,7 @@ class TriMesh {
      * Render the triangles
      */
     drawTriangles() {
+        // Bind vertex buffer
         gl.bindBuffer(gl.ARRAY_BUFFER, this.VertexPositionBuffer);
         gl.vertexAttribPointer(objectShaderProgram.vertexPositionAttribute, this.VertexPositionBuffer.itemSize,
             gl.FLOAT, false, 0, 0);
@@ -199,7 +197,7 @@ class TriMesh {
      * Render the triangle edges wireframe style
      */
     drawEdges() {
-
+        // Bind vertex buffer
         gl.bindBuffer(gl.ARRAY_BUFFER, this.VertexPositionBuffer);
         gl.vertexAttribPointer(objectShaderProgram.vertexPositionAttribute, this.VertexPositionBuffer.itemSize,
             gl.FLOAT, false, 0, 0);

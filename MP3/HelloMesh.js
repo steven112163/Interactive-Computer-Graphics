@@ -84,7 +84,7 @@ var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [1, 1, 1]; // 0 5 5
+var lightPosition = [1, 1, 1];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0.05, 0.05, 0.05];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -471,7 +471,7 @@ function drawObjects() {
 
 //----------------------------------------------------------------------------------
 /**
- * Setup the fragment and vertex shaders for objects
+ * Setup fragment shader and vertex shader of objects
  */
 function setupObjShaders() {
     gl.useProgram(objectShaderProgram);
@@ -617,7 +617,7 @@ function drawSkyBox() {
 
 //----------------------------------------------------------------------------------
 /**
- * Setup the fragment and vertex shaders for sky box
+ * Setup fragment shader and vertex shader of sky box
  */
 function setupSkyShaders() {
     gl.useProgram(skyBoxShaderProgram);
@@ -764,7 +764,7 @@ function degToRad(degrees) {
 
 
 //----------------------------------------------------------------------------------
-//Code to handle user interaction of keyboard
+// Code to handle user interaction of keyboard
 var currentlyPressedKeys = {};
 
 
@@ -833,9 +833,10 @@ function handleKeyUp(event) {
 
 
 //----------------------------------------------------------------------------------
-//Code to handle user interaction of mouse
+// Code to handle user interaction of mouse
 var drag = false;
 var old_x, old_y;
+
 
 function mouseDown(event) {
     event.preventDefault();
@@ -847,7 +848,7 @@ function mouseDown(event) {
 function mouseUp(event) {
     event.preventDefault();
     drag = false;
-};
+}
 
 function mouseMove(event) {
     if (!drag) return;
