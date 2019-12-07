@@ -74,6 +74,19 @@ var kSpecular = [1.0, 1.0, 1.0];
 var shininess = 100;
 
 
+// Animation parameters
+/** @global Milliseconds for animation */
+var time;
+/** @global Fluid density */
+var density = 1.29;
+/** @global Drag coefficient */
+var dragCoeff = 0.47;
+/** @global PI */
+var PI = Math.PI;
+/** @global Acceleration of gravity */
+var acceleration = 9.8;
+
+
 //-------------------------------------------------------------------------
 /**
  * Populates buffers with data for spheres
@@ -94,7 +107,7 @@ function setupSpheres() {
         let translation = [Math.random() * 5 - 2.5, Math.random() * 5 - 2.5, Math.random() * 5 - 2.5];
         let scalar = Math.random() * 0.3;
         let diffuse = [Math.random(), Math.random(), Math.random()];
-        spheres.push({translation: translation, scalar: scalar, diffuse: diffuse});
+        spheres.push({translation: translation, scalar: scalar, diffuse: diffuse, velocity: 0.0});
     }
 }
 
@@ -390,7 +403,18 @@ function draw() {
  * Animation to be called from tick. Updates globals and performs animation for each tick.
  */
 function animate() {
+    let previousTime = time;
+    time = new Date().getTime();
+    let currentTime = time;
+    let elapsedTime = (currentTime - previousTime) / 1000;
 
+    for (let i = 0; i < spheres.length; i++) {
+        let drag = 0.5 * density * Math.pow(spheres[i].velocity, 2)
+            * dragCoeff * PI * Math.pow(spheres[i].scalar, 2);
+        let currentVelocity = spheres[i].velocity * Math.pow(drag, elapsedTime) + acceleration * elapsedTime;
+        spheres[i].translation[1] -= (currentVelocity + spheres[i].velocity) / 2 * elapsedTime;
+        spheres[i].velocity = currentVelocity;
+    }
 }
 
 
@@ -406,6 +430,7 @@ function startup() {
     setupSpheres();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
+    time = new Date().getTime();
     tick();
 }
 
