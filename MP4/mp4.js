@@ -41,8 +41,7 @@ var numT;
 
 /** @global Buffer for holding spheres' position, scalar and diffuse */
 var spheres = [];
-spheres.push({translation: [2.5, 0.0, 0.0], scalar: 0.3, diffuse: [0.0 / 255.0, 153.0 / 255.0, 255.0 / 255.0]});
-spheres.push({translation: [-2.5, 0.0, 0.0], scalar: 0.3, diffuse: [255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0]});
+
 
 // View parameters
 /** @global Location of the camera in world coordinates */
@@ -57,7 +56,7 @@ var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
 // Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [0, 5, -10];
+var lightPosition = [0, 3, -10];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0.05, 0.05, 0.05];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -69,8 +68,6 @@ var lSpecular = [1, 1, 1];
 // Material parameters
 /** @global Ambient material color/intensity for Phong reflection */
 var kAmbient = [1.0, 1.0, 1.0];
-/** @global Diffuse material color/intensity for Phong reflection */
-var kDiffuse = [0.0 / 255.0, 153.0 / 255.0, 255.0 / 255.0];
 /** @global Specular material color/intensity for Phong reflection */
 var kSpecular = [1.0, 1.0, 1.0];
 /** @global Shininess exponent for Phong reflection */
@@ -90,10 +87,25 @@ function setupSphereBuffers() {
 
 //-------------------------------------------------------------------------
 /**
+ * Setup 10 spheres with random position, size and color
+ */
+function setupSpheres() {
+    for (let i = 0; i < 10; i++) {
+        let translation = [Math.random() * 5 - 2.5, Math.random() * 5 - 2.5, Math.random() * 5 - 2.5];
+        let scalar = Math.random() * 0.3;
+        let diffuse = [Math.random(), Math.random(), Math.random()];
+        spheres.push({translation: translation, scalar: scalar, diffuse: diffuse});
+    }
+}
+
+
+//-------------------------------------------------------------------------
+/**
  * Draws a sphere from the sphere buffer
  */
 function drawSphere() {
     for (let i = 0; i < spheres.length; i++) {
+        // Scale and translate every sphere
         let transformedSphereSoup = [];
         for (let j = 0; j < sphereSoup.length; j += 3) {
             transformedSphereSoup.push(sphereSoup[j] * spheres[i].scalar + spheres[i].translation[0]);
@@ -101,22 +113,24 @@ function drawSphere() {
             transformedSphereSoup.push(sphereSoup[j + 2] * spheres[i].scalar + spheres[i].translation[2]);
         }
 
+        // Update diffuse material color/intensity for Phong reflection of every sphere
         gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColor, spheres[i].diffuse);
 
+        // Specify vertices
         sphereVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(transformedSphereSoup), gl.STATIC_DRAW);
         sphereVertexPositionBuffer.itemSize = 3;
         sphereVertexPositionBuffer.numItems = numT * 3;
 
-
-        // Specify normals to be able to do lighting calculations
+        // Specify normals
         sphereVertexNormalBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormals), gl.STATIC_DRAW);
         sphereVertexNormalBuffer.itemSize = 3;
         sphereVertexNormalBuffer.numItems = numT * 3;
 
+        // Bind vertex buffer
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, sphereVertexPositionBuffer.itemSize,
             gl.FLOAT, false, 0, 0);
@@ -125,6 +139,8 @@ function drawSphere() {
         gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, sphereVertexNormalBuffer.itemSize,
             gl.FLOAT, false, 0, 0);
+
+        // Draw a sphere
         gl.drawArrays(gl.TRIANGLES, 0, sphereVertexPositionBuffer.numItems);
     }
 }
@@ -345,14 +361,6 @@ function uploadLightsToShader(loc, a, d, s) {
 
 //----------------------------------------------------------------------------------
 /**
- * Populate buffers with data
- */
-function setupBuffers() {
-    setupSphereBuffers();
-}
-
-//----------------------------------------------------------------------------------
-/**
  * Draw call that applies matrix transformations to model and draws model in frame
  */
 function draw() {
@@ -367,11 +375,11 @@ function draw() {
     // Then generate the lookat matrix and initialize the MV matrix to that view
     mat4.lookAt(mvMatrix, eyePt, viewPt, up);
 
-    mvPushMatrix();
-
     uploadLightsToShader(lightPosition, lAmbient, lDiffuse, lSpecular);
     uploadMaterialToShader(shininess, kAmbient, kSpecular);
     setMatrixUniforms();
+
+    mvPushMatrix();
     drawSphere();
     mvPopMatrix();
 }
@@ -394,7 +402,8 @@ function startup() {
     canvas = document.getElementById("myGLCanvas");
     gl = createGLContext(canvas);
     setupShaders();
-    setupBuffers();
+    setupSphereBuffers();
+    setupSpheres();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     tick();
