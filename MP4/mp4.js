@@ -1,9 +1,7 @@
 /**
- * @file A simple WebGL example drawing terrain
- * @author Yu-Hsun Yuan <yhyuan2@illinois.edu> <steven112163@gmail.com>
+ * @file A simple WebGL example for viewing meshes read from OBJ files
+ * @author Yu-Hsun Yuan <steven112163@gmail.com> <yhyuan2@illinois.edu>
  */
-
-const {mat4, mat3, vec3, quat} = glMatrix;
 
 /** @global The WebGL context */
 var gl;
@@ -26,72 +24,89 @@ var nMatrix = mat3.create();
 /** @global The matrix stack for hierarchical modeling */
 var mvMatrixStack = [];
 
-/** @global The angle of rotation around the z axis */
-var viewRoll = 0.0;
+/** @global WebGL buffer for holding vertices */
+var sphereVertexPositionBuffer;
 
-/** @global The speed of flight */
-var speed = 0.001;
-
-/** @global Global quaternion */
-var quaternion = quat.create();
-quat.setAxisAngle(quaternion, [1, 0, 0], 0.0);
-
-/** @global Dictionary of user interactions */
-var currentlyPressedKeys = {};
-
-/** @global A glmatrix vector to use for transformations */
-var transformVec = vec3.create();
-
-// Initialize the vector....
-vec3.set(transformVec, 0.0, 0.0, -2.0);
-
-/** @global An object holding the geometry for a 3D terrain */
-var myTerrain;
-
+/** @global WebGL buffer for holding normals */
+var sphereVertexNormalBuffer;
 
 // View parameters
 /** @global Location of the camera in world coordinates */
-var eyePt = vec3.fromValues(0.0, 0.0, 0.0);
-/** @global Temporary location of the camera in world coordinates */
-var tempEyePt = vec3.fromValues(0.0, 0.0, 0.0);
+var eyePt = vec3.fromValues(0.0, 0.0, 150.0);
 /** @global Direction of the view in world coordinates */
 var viewDir = vec3.fromValues(0.0, 0.0, -1.0);
-/** @global Temporary Direction of the view in world coordinates */
-var tempViewDir = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
 var up = vec3.fromValues(0.0, 1.0, 0.0);
-/** @global Temporary up vector for view matrix creation, in world coordinates */
-var tempUp = vec3.fromValues(0.0, 1.0, 0.0);
-/** @global camera axis of x */
-var cameraX = vec3.fromValues(1.0, 0.0, 0.0);
-/** @global camera axis of y */
-var cameraY = vec3.fromValues(0.0, 1.0, 0.0);
 /** @global Location of a point along viewDir in world coordinates */
 var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
+
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = vec3.fromValues(0, 3, 3);
+var lightPosition = [20, 20, 20];
 /** @global Ambient light color/intensity for Phong reflection */
-var lAmbient = [0, 0, 0];
+var lAmbient = [0.05, 0.05, 0.05];
 /** @global Diffuse light color/intensity for Phong reflection */
 var lDiffuse = [1, 1, 1];
 /** @global Specular light color/intensity for Phong reflection */
-var lSpecular = [0, 0, 0];
+var lSpecular = [1, 1, 1];
+
 
 //Material parameters
 /** @global Ambient material color/intensity for Phong reflection */
 var kAmbient = [1.0, 1.0, 1.0];
 /** @global Diffuse material color/intensity for Phong reflection */
-var kTerrainDiffuse = [205.0 / 255.0, 163.0 / 255.0, 63.0 / 255.0];
+var kDiffuse = [0.0 / 255.0, 153.0 / 255.0, 255.0 / 255.0];
 /** @global Specular material color/intensity for Phong reflection */
-var kSpecular = [0.0, 0.0, 0.0];
+var kSpecular = [1.0, 1.0, 1.0];
 /** @global Shininess exponent for Phong reflection */
-var shininess = 23;
-/** @global Edge color fpr wireframeish rendering */
-var kEdgeBlack = [0.0, 0.0, 0.0];
-/** @global Edge color for wireframe rendering */
-var kEdgeWhite = [1.0, 1.0, 1.0];
+var shininess = 100;
+
+
+//-------------------------------------------------------------------------
+/**
+ * Populates buffers with data for spheres
+ */
+function setupSphereBuffers() {
+    let sphereSoup = [];
+    let sphereNormals = [];
+    let numT = sphereFromSubdivision(6, sphereSoup, sphereNormals);
+    console.log("Generated ", numT, " triangles");
+    sphereVertexPositionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereSoup), gl.STATIC_DRAW);
+    sphereVertexPositionBuffer.itemSize = 3;
+    sphereVertexPositionBuffer.numItems = numT * 3;
+    console.log(sphereSoup.length / 9);
+
+    // Specify normals to be able to do lighting calculations
+    sphereVertexNormalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormals),
+        gl.STATIC_DRAW);
+    sphereVertexNormalBuffer.itemSize = 3;
+    sphereVertexNormalBuffer.numItems = numT * 3;
+
+    console.log("Normals ", sphereNormals.length / 3);
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Draws a sphere from the sphere buffer
+ */
+function drawSphere() {
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
+    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, sphereVertexPositionBuffer.itemSize,
+        gl.FLOAT, false, 0, 0);
+
+    // Bind normal buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
+    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
+        sphereVertexNormalBuffer.itemSize,
+        gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, sphereVertexPositionBuffer.numItems);
+}
 
 
 //-------------------------------------------------------------------------
@@ -105,16 +120,6 @@ function uploadModelViewMatrixToShader() {
 
 //-------------------------------------------------------------------------
 /**
- * Sends projection matrix to shader
- */
-function uploadProjectionMatrixToShader() {
-    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform,
-        false, pMatrix);
-}
-
-
-//-------------------------------------------------------------------------
-/**
  * Generates and sends the normal matrix to the shader
  */
 function uploadNormalMatrixToShader() {
@@ -122,6 +127,16 @@ function uploadNormalMatrixToShader() {
     mat3.transpose(nMatrix, nMatrix);
     mat3.invert(nMatrix, nMatrix);
     gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, nMatrix);
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Sends projection matrix to shader
+ */
+function uploadProjectionMatrixToShader() {
+    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform,
+        false, pMatrix);
 }
 
 
@@ -157,7 +172,6 @@ function setMatrixUniforms() {
     uploadProjectionMatrixToShader();
 }
 
-
 //----------------------------------------------------------------------------------
 /**
  * Translates degrees to radians
@@ -167,7 +181,6 @@ function setMatrixUniforms() {
 function degToRad(degrees) {
     return degrees * Math.PI / 180;
 }
-
 
 //----------------------------------------------------------------------------------
 /**
@@ -195,7 +208,6 @@ function createGLContext(canvas) {
     }
     return context;
 }
-
 
 //----------------------------------------------------------------------------------
 /**
@@ -241,7 +253,6 @@ function loadShaderFromDOM(id) {
     return shader;
 }
 
-
 //----------------------------------------------------------------------------------
 /**
  * Setup the fragment and vertex shaders
@@ -270,18 +281,15 @@ function setupShaders() {
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix");
-    shaderProgram.lHeightUniform = gl.getUniformLocation(shaderProgram, "lowestHeight");
-    shaderProgram.hHeightUniform = gl.getUniformLocation(shaderProgram, "highestHeight");
-    shaderProgram.manualUniform = gl.getUniformLocation(shaderProgram, "manualOrNot");
     shaderProgram.uniformLightPositionLoc = gl.getUniformLocation(shaderProgram, "uLightPosition");
     shaderProgram.uniformAmbientLightColorLoc = gl.getUniformLocation(shaderProgram, "uAmbientLightColor");
     shaderProgram.uniformDiffuseLightColorLoc = gl.getUniformLocation(shaderProgram, "uDiffuseLightColor");
     shaderProgram.uniformSpecularLightColorLoc = gl.getUniformLocation(shaderProgram, "uSpecularLightColor");
-    shaderProgram.uniformShininessLoc = gl.getUniformLocation(shaderProgram, "uShininess");
-    shaderProgram.uniformAmbientMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKAmbient");
-    shaderProgram.uniformDiffuseMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKDiffuse");
-    shaderProgram.uniformSpecularMaterialColorLoc = gl.getUniformLocation(shaderProgram, "uKSpecular");
-    shaderProgram.fogUniform = gl.getUniformLocation(shaderProgram, "fogOn");
+    shaderProgram.uniformDiffuseMaterialColor = gl.getUniformLocation(shaderProgram, "uDiffuseMaterialColor");
+    shaderProgram.uniformAmbientMaterialColor = gl.getUniformLocation(shaderProgram, "uAmbientMaterialColor");
+    shaderProgram.uniformSpecularMaterialColor = gl.getUniformLocation(shaderProgram, "uSpecularMaterialColor");
+
+    shaderProgram.uniformShininess = gl.getUniformLocation(shaderProgram, "uShininess");
 }
 
 
@@ -293,11 +301,11 @@ function setupShaders() {
  * @param {Float32Array} d Diffuse material color
  * @param {Float32Array} s Specular material color
  */
-function setMaterialUniforms(alpha, a, d, s) {
-    gl.uniform1f(shaderProgram.uniformShininessLoc, alpha);
-    gl.uniform3fv(shaderProgram.uniformAmbientMaterialColorLoc, a);
-    gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColorLoc, d);
-    gl.uniform3fv(shaderProgram.uniformSpecularMaterialColorLoc, s);
+function uploadMaterialToShader(alpha, a, d, s) {
+    gl.uniform1f(shaderProgram.uniformShininess, alpha);
+    gl.uniform3fv(shaderProgram.uniformAmbientMaterialColor, a);
+    gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColor, d);
+    gl.uniform3fv(shaderProgram.uniformSpecularMaterialColor, s);
 }
 
 
@@ -309,7 +317,7 @@ function setMaterialUniforms(alpha, a, d, s) {
  * @param {Float32Array} d Diffuse light strength
  * @param {Float32Array} s Specular light strength
  */
-function setLightUniforms(loc, a, d, s) {
+function uploadLightsToShader(loc, a, d, s) {
     gl.uniform3fv(shaderProgram.uniformLightPositionLoc, loc);
     gl.uniform3fv(shaderProgram.uniformAmbientLightColorLoc, a);
     gl.uniform3fv(shaderProgram.uniformDiffuseLightColorLoc, d);
@@ -322,10 +330,8 @@ function setLightUniforms(loc, a, d, s) {
  * Populate buffers with data
  */
 function setupBuffers() {
-    myTerrain = new Terrain(128, -1, 1, -1, 1);
-    myTerrain.loadBuffers();
+    setupSphereBuffers();
 }
-
 
 //----------------------------------------------------------------------------------
 /**
@@ -338,55 +344,31 @@ function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // We'll use perspective 
-    mat4.perspective(pMatrix, degToRad(45),
-        gl.viewportWidth / gl.viewportHeight,
-        0.1, 200.0);
+    mat4.perspective(pMatrix, degToRad(45), gl.viewportWidth / gl.viewportHeight, 0.1, 200.0);
 
-    // Change view direction
-    vec3.transformQuat(tempViewDir, tempViewDir, quaternion);
-    // Move eye point forward
-    let distance = vec3.create();
-    vec3.scale(distance, tempViewDir, speed);
-    vec3.add(tempEyePt, tempEyePt, distance);
     // We want to look down -z, so create a lookat point in that direction    
-    vec3.add(viewPt, tempEyePt, tempViewDir);
+    vec3.add(viewPt, eyePt, viewDir);
     // Then generate the lookat matrix and initialize the MV matrix to that view
-    mat4.lookAt(mvMatrix, tempEyePt, viewPt, tempUp);
-    //mat4.rotate(mvMatrix, mvMatrix, degToRad(viewRoll), tempViewDir);
+    mat4.lookAt(mvMatrix, eyePt, viewPt, up);
 
-    //Draw Terrain
     mvPushMatrix();
-    vec3.set(transformVec, 0.0, -0.25, -2.0);
-    mat4.translate(mvMatrix, mvMatrix, transformVec);
-    mat4.rotateX(mvMatrix, mvMatrix, degToRad(-75));
+    vec3.set(transformVec, 20, 20, 20);
+    mat4.scale(mvMatrix, mvMatrix, transformVec);
+
+    uploadLightsToShader(lightPosition, lAmbient, lDiffuse, lSpecular);
+    uploadMaterialToShader(shininess, kAmbient, kDiffuse, kSpecular);
     setMatrixUniforms();
-    setLightUniforms(lightPosition, lAmbient, lDiffuse, lSpecular);
-    gl.uniform1f(shaderProgram.lHeightUniform, myTerrain.lowestHeight);
-    gl.uniform1f(shaderProgram.hHeightUniform, myTerrain.highestHeight);
-
-    if (document.getElementById("fogOn").checked)
-        gl.uniform1i(shaderProgram.fogUniform, 1);
-    else
-        gl.uniform1i(shaderProgram.fogUniform, 0);
-
-    if ((document.getElementById("polygon").checked) || (document.getElementById("wirepoly").checked)) {
-        gl.uniform1i(shaderProgram.manualUniform, 1);
-        setMaterialUniforms(shininess, kAmbient, kTerrainDiffuse, kSpecular);
-        myTerrain.drawTriangles();
-    }
-
-    if (document.getElementById("wirepoly").checked) {
-        gl.uniform1i(shaderProgram.manualUniform, 0);
-        setMaterialUniforms(shininess, kAmbient, kEdgeBlack, kSpecular);
-        myTerrain.drawEdges();
-    }
-
-    if (document.getElementById("wireframe").checked) {
-        gl.uniform1i(shaderProgram.manualUniform, 0);
-        setMaterialUniforms(shininess, kAmbient, kEdgeWhite, kSpecular);
-        myTerrain.drawEdges();
-    }
+    drawSphere();
     mvPopMatrix();
+}
+
+
+//----------------------------------------------------------------------------------
+/**
+ * Animation to be called from tick. Updates globals and performs animation for each tick.
+ */
+function animate() {
+
 }
 
 
@@ -399,110 +381,18 @@ function startup() {
     gl = createGLContext(canvas);
     setupShaders();
     setupBuffers();
-    gl.clearColor(0.0, 204.0 / 255.0, 1.0, 1.0);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
-    document.onkeydown = handleKeyDown;
-    document.onkeyup = handleKeyUp;
     tick();
 }
 
 
 //----------------------------------------------------------------------------------
 /**
- * Keeping drawing frames....
+ * Tick called for every animation frame.
  */
 function tick() {
     requestAnimFrame(tick);
-    handleKeys();
     draw();
-}
-
-
-//----------------------------------------------------------------------------------
-/**
- * Handle user interaction
- */
-function handleKeyDown(event) {
-    currentlyPressedKeys[event.key] = true;
-    event.preventDefault();
-}
-
-function handleKeyUp(event) {
-    currentlyPressedKeys[event.key] = false;
-    event.preventDefault();
-
-    if (!currentlyPressedKeys["ArrowRight"] && !currentlyPressedKeys["ArrowLeft"])
-        quat.setAxisAngle(quaternion, [0, 1, 0], 0.0);
-
-    if (!currentlyPressedKeys["ArrowUp"] && !currentlyPressedKeys["ArrowDown"])
-        quat.setAxisAngle(quaternion, [1, 0, 0], 0.0);
-}
-
-function handleKeys() {
-    let workingQuaternion = quat.create();
-
-    // Yaw
-    if (currentlyPressedKeys["e"] || currentlyPressedKeys["E"]) {
-        // Yaw to right
-        quat.setAxisAngle(workingQuaternion, cameraY, degToRad(-0.29));
-        quat.multiply(quaternion, workingQuaternion, quaternion);
-    }
-    if (currentlyPressedKeys["q"] || currentlyPressedKeys["Q"]) {
-        // Yaw to left
-        quat.setAxisAngle(workingQuaternion, cameraY, degToRad(0.29));
-        quat.multiply(quaternion, workingQuaternion, quaternion);
-    }
-
-    // Pitch
-    if (currentlyPressedKeys["ArrowUp"]) {
-        // Pitch up
-        quat.setAxisAngle(workingQuaternion, cameraX, degToRad(0.29));
-
-        quat.multiply(quaternion, workingQuaternion, quaternion);
-    }
-    if (currentlyPressedKeys["ArrowDown"]) {
-        // Pitch down
-        quat.setAxisAngle(workingQuaternion, cameraX, degToRad(-0.29));
-        quat.multiply(quaternion, workingQuaternion, quaternion);
-    }
-
-    // Roll
-    if (currentlyPressedKeys["ArrowRight"]) {
-        // Roll to right
-        vec3.rotateZ(tempUp, tempUp, [0, 0, 0], -0.13);
-        vec3.rotateZ(cameraX, cameraX, [0, 0, 0], -0.13);
-        vec3.rotateZ(cameraY, cameraY, [0, 0, 0], -0.13);
-        vec3.rotateZ(lightPosition, lightPosition, [0, 0, 0], 0.13);
-    }
-    if (currentlyPressedKeys["ArrowLeft"]) {
-        // Roll to left
-        vec3.rotateZ(tempUp, tempUp, [0, 0, 0], 0.13);
-        vec3.rotateZ(cameraX, cameraX, [0, 0, 0], 0.13);
-        vec3.rotateZ(cameraY, cameraY, [0, 0, 0], 0.13);
-        vec3.rotateZ(lightPosition, lightPosition, [0, 0, 0], -0.13);
-    }
-
-    quat.normalize(quaternion, quaternion);
-
-    // Speed
-    if (currentlyPressedKeys["+"]) {
-        // Speed up
-        speed += 0.001;
-    }
-    if (currentlyPressedKeys["-"]) {
-        // Speed down
-        speed -= 0.001;
-    }
-
-    // Reset
-    if (currentlyPressedKeys["="]) {
-        viewRoll = 0.0;
-        speed = 0.001;
-        vec3.copy(tempEyePt, eyePt);
-        vec3.copy(tempViewDir, viewDir);
-        vec3.copy(tempUp, up);
-        lightPosition = vec3.fromValues(0, 3, 3);
-        cameraX = vec3.fromValues(1, 0, 0);
-        cameraY = vec3.fromValues(0, 1, 0);
-    }
+    animate();
 }

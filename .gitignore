@@ -13,3 +13,6 @@ MP2/*.zip
 MP3/*.zip
 !MP3/images/
 !MP3/images/*
+!MP4/
+!MP4/*
+MP4/*.zip
