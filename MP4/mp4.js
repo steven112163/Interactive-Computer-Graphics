@@ -1,5 +1,5 @@
 /**
- * @file A simple WebGL example for viewing meshes read from OBJ files
+ * @file A simple WebGL example for simulating physics
  * @author Yu-Hsun Yuan <steven112163@gmail.com> <yhyuan2@illinois.edu>
  */
 
@@ -30,9 +30,23 @@ var sphereVertexPositionBuffer;
 /** @global WebGL buffer for holding normals */
 var sphereVertexNormalBuffer;
 
+/** @global Buffer for holding sphere's vertices */
+let sphereSoup = [];
+
+/** @global Buffer for holding sphere's normals */
+let sphereNormals = [];
+
+/** @global Number of triangles of sphere */
+var numT;
+
+/** @global Buffer for holding spheres' position, scalar and diffuse */
+var spheres = [];
+spheres.push({translation: [2.5, 0.0, 0.0], scalar: 0.3, diffuse: [0.0 / 255.0, 153.0 / 255.0, 255.0 / 255.0]});
+spheres.push({translation: [-2.5, 0.0, 0.0], scalar: 0.3, diffuse: [255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0]});
+
 // View parameters
 /** @global Location of the camera in world coordinates */
-var eyePt = vec3.fromValues(0.0, 0.0, 150.0);
+var eyePt = vec3.fromValues(0.0, 0.0, 10.0);
 /** @global Direction of the view in world coordinates */
 var viewDir = vec3.fromValues(0.0, 0.0, -1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
@@ -41,9 +55,9 @@ var up = vec3.fromValues(0.0, 1.0, 0.0);
 var viewPt = vec3.fromValues(0.0, 0.0, 0.0);
 
 
-//Light parameters
+// Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [20, 20, 20];
+var lightPosition = [0, 5, -10];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [0.05, 0.05, 0.05];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -52,7 +66,7 @@ var lDiffuse = [1, 1, 1];
 var lSpecular = [1, 1, 1];
 
 
-//Material parameters
+// Material parameters
 /** @global Ambient material color/intensity for Phong reflection */
 var kAmbient = [1.0, 1.0, 1.0];
 /** @global Diffuse material color/intensity for Phong reflection */
@@ -68,25 +82,8 @@ var shininess = 100;
  * Populates buffers with data for spheres
  */
 function setupSphereBuffers() {
-    let sphereSoup = [];
-    let sphereNormals = [];
-    let numT = sphereFromSubdivision(6, sphereSoup, sphereNormals);
+    numT = sphereFromSubdivision(6, sphereSoup, sphereNormals);
     console.log("Generated ", numT, " triangles");
-    sphereVertexPositionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereSoup), gl.STATIC_DRAW);
-    sphereVertexPositionBuffer.itemSize = 3;
-    sphereVertexPositionBuffer.numItems = numT * 3;
-    console.log(sphereSoup.length / 9);
-
-    // Specify normals to be able to do lighting calculations
-    sphereVertexNormalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormals),
-        gl.STATIC_DRAW);
-    sphereVertexNormalBuffer.itemSize = 3;
-    sphereVertexNormalBuffer.numItems = numT * 3;
-
     console.log("Normals ", sphereNormals.length / 3);
 }
 
@@ -96,16 +93,40 @@ function setupSphereBuffers() {
  * Draws a sphere from the sphere buffer
  */
 function drawSphere() {
-    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, sphereVertexPositionBuffer.itemSize,
-        gl.FLOAT, false, 0, 0);
+    for (let i = 0; i < spheres.length; i++) {
+        let transformedSphereSoup = [];
+        for (let j = 0; j < sphereSoup.length; j += 3) {
+            transformedSphereSoup.push(sphereSoup[j] * spheres[i].scalar + spheres[i].translation[0]);
+            transformedSphereSoup.push(sphereSoup[j + 1] * spheres[i].scalar + spheres[i].translation[1]);
+            transformedSphereSoup.push(sphereSoup[j + 2] * spheres[i].scalar + spheres[i].translation[2]);
+        }
 
-    // Bind normal buffer
-    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
-        sphereVertexNormalBuffer.itemSize,
-        gl.FLOAT, false, 0, 0);
-    gl.drawArrays(gl.TRIANGLES, 0, sphereVertexPositionBuffer.numItems);
+        gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColor, spheres[i].diffuse);
+
+        sphereVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(transformedSphereSoup), gl.STATIC_DRAW);
+        sphereVertexPositionBuffer.itemSize = 3;
+        sphereVertexPositionBuffer.numItems = numT * 3;
+
+
+        // Specify normals to be able to do lighting calculations
+        sphereVertexNormalBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereNormals), gl.STATIC_DRAW);
+        sphereVertexNormalBuffer.itemSize = 3;
+        sphereVertexNormalBuffer.numItems = numT * 3;
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, sphereVertexPositionBuffer.itemSize,
+            gl.FLOAT, false, 0, 0);
+
+        // Bind normal buffer
+        gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, sphereVertexNormalBuffer.itemSize,
+            gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, sphereVertexPositionBuffer.numItems);
+    }
 }
 
 
@@ -135,8 +156,7 @@ function uploadNormalMatrixToShader() {
  * Sends projection matrix to shader
  */
 function uploadProjectionMatrixToShader() {
-    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform,
-        false, pMatrix);
+    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
 }
 
 
@@ -298,13 +318,11 @@ function setupShaders() {
  * Sends material information to the shader
  * @param {Float32} alpha shininess coefficient
  * @param {Float32Array} a Ambient material color
- * @param {Float32Array} d Diffuse material color
  * @param {Float32Array} s Specular material color
  */
-function uploadMaterialToShader(alpha, a, d, s) {
+function uploadMaterialToShader(alpha, a, s) {
     gl.uniform1f(shaderProgram.uniformShininess, alpha);
     gl.uniform3fv(shaderProgram.uniformAmbientMaterialColor, a);
-    gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColor, d);
     gl.uniform3fv(shaderProgram.uniformSpecularMaterialColor, s);
 }
 
@@ -338,8 +356,6 @@ function setupBuffers() {
  * Draw call that applies matrix transformations to model and draws model in frame
  */
 function draw() {
-    let transformVec = vec3.create();
-
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -352,11 +368,9 @@ function draw() {
     mat4.lookAt(mvMatrix, eyePt, viewPt, up);
 
     mvPushMatrix();
-    vec3.set(transformVec, 20, 20, 20);
-    mat4.scale(mvMatrix, mvMatrix, transformVec);
 
     uploadLightsToShader(lightPosition, lAmbient, lDiffuse, lSpecular);
-    uploadMaterialToShader(shininess, kAmbient, kDiffuse, kSpecular);
+    uploadMaterialToShader(shininess, kAmbient, kSpecular);
     setMatrixUniforms();
     drawSphere();
     mvPopMatrix();
