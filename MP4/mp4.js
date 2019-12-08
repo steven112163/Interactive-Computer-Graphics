@@ -24,10 +24,10 @@ var nMatrix = mat3.create();
 /** @global The matrix stack for hierarchical modeling */
 var mvMatrixStack = [];
 
-/** @global WebGL buffer for holding vertices */
+/** @global WebGL buffer for holding vertices of sphere */
 var sphereVertexPositionBuffer;
 
-/** @global WebGL buffer for holding normals */
+/** @global WebGL buffer for holding normals of sphere */
 var sphereVertexNormalBuffer;
 
 /** @global Buffer for holding sphere's vertices */
@@ -41,6 +41,12 @@ var numT;
 
 /** @global Buffer for holding spheres' position, scalar and diffuse */
 var spheres = [];
+
+/** @global WebGL buffer for holding vertices of plane*/
+var planeVertexPositionBuffer;
+
+/** @global WebGL buffer for holding normals of plane*/
+var planeVertexNormalBuffer;
 
 
 // View parameters
@@ -84,7 +90,7 @@ var dragCoeff = 0.47;
 /** @global PI */
 var PI = Math.PI;
 /** @global Acceleration of gravity */
-var acceleration = 9.8;
+var acceleration = -9.8;
 
 
 //-------------------------------------------------------------------------
@@ -105,10 +111,44 @@ function setupSphereBuffers() {
 function setupSpheres() {
     for (let i = 0; i < 10; i++) {
         let translation = [Math.random() * 5 - 2.5, Math.random() * 5 - 2.5, Math.random() * 5 - 2.5];
-        let scalar = Math.random() * 0.3;
+        let scalar = Math.random() * 0.25 + 0.05;
         let diffuse = [Math.random(), Math.random(), Math.random()];
-        spheres.push({translation: translation, scalar: scalar, diffuse: diffuse, velocity: 0.0});
+        spheres.push({translation: translation, scalar: scalar, diffuse: diffuse, velocity: 0.0, direction: -1});
     }
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Setup plane
+ */
+function setupPlane() {
+    let vertices = [-3, -3, 3,
+        -3, -3, -3,
+        3, -3, -3,
+        -3, -3, 3,
+        3, -3, -3,
+        3, -3, 3,];
+
+    let normals = [];
+    for (let i = 0; i < 18; i += 3) {
+        normals.push(0);
+        normals.push(1);
+        normals.push(0);
+    }
+    // Specify vertices
+    planeVertexPositionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, planeVertexPositionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    planeVertexPositionBuffer.itemSize = 3;
+    planeVertexPositionBuffer.numItems = 6;
+
+    // Specify normals
+    planeVertexNormalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, planeVertexNormalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+    planeVertexNormalBuffer.itemSize = 3;
+    planeVertexNormalBuffer.numItems = 6;
 }
 
 
@@ -156,6 +196,28 @@ function drawSphere() {
         // Draw a sphere
         gl.drawArrays(gl.TRIANGLES, 0, sphereVertexPositionBuffer.numItems);
     }
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Draws a plane from the plane buffer
+ */
+function drawPlane() {
+    gl.uniform3fv(shaderProgram.uniformDiffuseMaterialColor, [1.0, 1.0, 1.0]);
+
+    // Bind vertex buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, planeVertexPositionBuffer);
+    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, planeVertexPositionBuffer.itemSize,
+        gl.FLOAT, false, 0, 0);
+
+    // Bind normal buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, planeVertexNormalBuffer);
+    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, planeVertexNormalBuffer.itemSize,
+        gl.FLOAT, false, 0, 0);
+
+    // Draw a sphere
+    gl.drawArrays(gl.TRIANGLES, 0, planeVertexPositionBuffer.numItems);
 }
 
 
@@ -395,6 +457,9 @@ function draw() {
     mvPushMatrix();
     drawSphere();
     mvPopMatrix();
+    mvPushMatrix();
+    drawPlane();
+    mvPopMatrix();
 }
 
 
@@ -403,17 +468,77 @@ function draw() {
  * Animation to be called from tick. Updates globals and performs animation for each tick.
  */
 function animate() {
+    // Update time
     let previousTime = time;
     time = new Date().getTime();
     let currentTime = time;
     let elapsedTime = (currentTime - previousTime) / 1000;
 
+    // Update position, velocity and direction of every sphere
+    // Wall is at y = -3
     for (let i = 0; i < spheres.length; i++) {
+        if (spheres[i].translation[1] == spheres[i].scalar - 3 && spheres[i].direction == 0)
+            continue;
+
+        // Get distance until collision
+        let disToColl = Math.abs(spheres[i].translation[1] - spheres[i].scalar + 3);
+
+        // Get current velocity
         let drag = 0.5 * density * Math.pow(spheres[i].velocity, 2)
             * dragCoeff * PI * Math.pow(spheres[i].scalar, 2);
-        let currentVelocity = spheres[i].velocity * Math.pow(drag, elapsedTime) + acceleration * elapsedTime;
-        spheres[i].translation[1] -= (currentVelocity + spheres[i].velocity) / 2 * elapsedTime;
-        spheres[i].velocity = currentVelocity;
+        let currentVelocity = spheres[i].velocity - drag * elapsedTime
+            + spheres[i].direction * acceleration * elapsedTime;
+
+        // Get distance
+        let distance = (currentVelocity + spheres[i].velocity) / 2 * elapsedTime;
+
+        // Change direction if it has already passed the highest point
+        if (currentVelocity < 0 && spheres[i].direction > 0) {
+            spheres[i].direction = -spheres[i].direction;
+            currentVelocity = -currentVelocity;
+        }
+
+        console.log(i, "y", spheres[i].translation[1] - spheres[i].scalar);
+        // Sphere and wall will collide
+        if (disToColl < distance && spheres[i].direction < 0 && spheres[i].translation[1] > -3) {
+            console.log(i, "disToColl", disToColl);
+            // Get time needed to collide and remaining time after collision
+            let timeNeeded = (Math.sqrt(Math.pow(spheres[i].velocity, 2) - 2 * acceleration * disToColl)
+                - spheres[i].velocity) / (-acceleration);
+            let remainingTime = elapsedTime - timeNeeded;
+            if (remainingTime < 0) {
+                spheres[i].direction = 0;
+                spheres[i].translation[1] = spheres[i].scalar - 3;
+                spheres[i].velocity = 0.0;
+                continue;
+            }
+            console.log(i, "remaining time", remainingTime);
+
+            // Get new velocity after collision and change direction
+            let newVelocity = spheres[i].velocity - drag * elapsedTime
+                + spheres[i].direction * acceleration * timeNeeded;
+            spheres[i].direction = -spheres[i].direction;
+            console.log(i, "direction", spheres[i].direction);
+            newVelocity *= 0.5;
+
+            // Calculate new position and velocity after collision
+            currentVelocity = newVelocity - drag * remainingTime
+                + spheres[i].direction * acceleration * remainingTime;
+            distance = (currentVelocity + newVelocity) / 2 * remainingTime;
+            if (currentVelocity < 0) {
+                spheres[i].direction = 0;
+                spheres[i].translation[1] = spheres[i].scalar - 3;
+                spheres[i].velocity = 0.0;
+                continue;
+            }
+
+            spheres[i].translation[1] = distance + spheres[i].scalar - 3;
+            spheres[i].velocity = currentVelocity;
+        } else {
+            console.log(i, "here", disToColl);
+            spheres[i].translation[1] += spheres[i].direction * distance;
+            spheres[i].velocity = currentVelocity;
+        }
     }
 }
 
@@ -428,6 +553,7 @@ function startup() {
     setupShaders();
     setupSphereBuffers();
     setupSpheres();
+    setupPlane();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     time = new Date().getTime();
