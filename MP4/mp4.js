@@ -106,15 +106,23 @@ function setupSphereBuffers() {
 
 //-------------------------------------------------------------------------
 /**
- * Setup 10 spheres with random position, size and color
+ * Generate a sphere
+ */
+function generateSphere() {
+    let translation = [Math.random() * 5 - 2.5, Math.random() * 5 - 2.5, Math.random() * 5 - 2.5];
+    let scalar = Math.random() * 0.25 + 0.05;
+    let diffuse = [Math.random(), Math.random(), Math.random()];
+    spheres.push({translation: translation, scalar: scalar, diffuse: diffuse, velocity: 0.0, direction: -1});
+}
+
+
+//-------------------------------------------------------------------------
+/**
+ * Setup 5 spheres with random position, size and color
  */
 function setupSpheres() {
-    for (let i = 0; i < 10; i++) {
-        let translation = [Math.random() * 5 - 2.5, Math.random() * 5 - 2.5, Math.random() * 5 - 2.5];
-        let scalar = Math.random() * 0.25 + 0.05;
-        let diffuse = [Math.random(), Math.random(), Math.random()];
-        spheres.push({translation: translation, scalar: scalar, diffuse: diffuse, velocity: 0.0, direction: -1});
-    }
+    for (let i = 0; i < 5; i++)
+        generateSphere();
 }
 
 
@@ -136,6 +144,7 @@ function setupPlane() {
         normals.push(1);
         normals.push(0);
     }
+
     // Specify vertices
     planeVertexPositionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, planeVertexPositionBuffer);
@@ -557,6 +566,8 @@ function startup() {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     time = new Date().getTime();
+    document.onkeydown = handleKeyDown;
+    canvas.onmousedown = mouseDown;
     tick();
 }
 
@@ -569,4 +580,33 @@ function tick() {
     requestAnimFrame(tick);
     draw();
     animate();
+}
+
+
+//----------------------------------------------------------------------------------
+// Code to handle user interaction of keyboard
+function handleKeyDown(event) {
+    // Reset
+    if (event.key == "=") {
+        event.preventDefault();
+        spheres = [];
+        setupSpheres();
+        document.getElementById("nS").value = 5;
+    }
+
+    // Add a sphere
+    if (event.key == "+") {
+        event.preventDefault();
+        generateSphere();
+        document.getElementById("nS").value++;
+    }
+}
+
+
+//----------------------------------------------------------------------------------
+// Code to handle user interaction of mouse
+function mouseDown(event) {
+    event.preventDefault();
+    generateSphere();
+    document.getElementById("nS").value++;
 }
